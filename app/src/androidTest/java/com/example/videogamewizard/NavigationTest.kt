@@ -8,7 +8,9 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.navigation.compose.ComposeNavigator
 import androidx.navigation.testing.TestNavHostController
-import org.junit.Assert.assertEquals
+import com.example.videogamewizard.navigation.AppNavGraph
+import com.example.videogamewizard.navigation.Route
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -54,7 +56,7 @@ class NavigationTest {
             .assertIsDisplayed()
 
         composeTestRule.runOnIdle {
-            assertEquals("home", navController.currentDestination?.route)
+            assertTrue(navController.currentDestination?.hasRoute(Route.Home::class) == true)
         }
     }
 }
