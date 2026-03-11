@@ -1,15 +1,17 @@
 *.iml
 .gradle
 /local.properties
-/.idea/caches
-/.idea/libraries
-/.idea/modules.xml
-/.idea/workspace.xml
-/.idea/navEditor.xml
-/.idea/assetWizardSettings.xml
+/.idea/
+.claude/
 .DS_Store
 /build
 /captures
 .externalNativeBuild
 .cxx
 local.properties
+
+# Scraped data
+scraping/data/
+scraping/**/__pycache__/
+scraping/**/*.pyc
+scraping/wikis/.scrapy/

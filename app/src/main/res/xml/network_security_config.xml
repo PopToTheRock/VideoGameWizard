@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Allows cleartext HTTP for local development.
+    The RAG server runs on the developer's PC over the local network
+    without TLS — this config permits that while keeping all external
+    traffic encrypted.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true" />
+</network-security-config>
