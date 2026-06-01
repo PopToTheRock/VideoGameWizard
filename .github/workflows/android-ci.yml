@@ -1,4 +1,4 @@
-name: Android CI
+name: CI
 
 on:
   push:
@@ -60,3 +60,30 @@ jobs:
           name: lint-report
           path: app/build/reports/lint-results-debug.html
           if-no-files-found: ignore
+
+  python-test:
+    name: Python lint & test (RAG)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: scraping
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install test dependencies
+        run: pip install -r requirements-test.txt
+
+      - name: Ruff lint
+        run: ruff check rag/
+
+      - name: Ruff format check
+        run: ruff format --check rag/
+
+      - name: Pytest
+        run: pytest -q

@@ -6,7 +6,7 @@
 > everything runs on consumer hardware.
 
 <!-- Badges -->
-[![Android CI](https://github.com/PopToTheRock/VideoGameWizard/actions/workflows/android-ci.yml/badge.svg)](https://github.com/PopToTheRock/VideoGameWizard/actions/workflows/android-ci.yml)
+[![CI](https://github.com/PopToTheRock/VideoGameWizard/actions/workflows/android-ci.yml/badge.svg)](https://github.com/PopToTheRock/VideoGameWizard/actions/workflows/android-ci.yml)
 ![Platform](https://img.shields.io/badge/platform-Android-3DDC84?logo=android&logoColor=white)
 ![Kotlin](https://img.shields.io/badge/Kotlin-2.x-7F52FF?logo=kotlin&logoColor=white)
 ![Jetpack Compose](https://img.shields.io/badge/UI-Jetpack%20Compose-4285F4?logo=jetpackcompose&logoColor=white)
@@ -120,12 +120,14 @@ ollama serve
 
 ### 2. Start the RAG server
 ```bash
-cd scraping/rag
-# (install deps — a pinned requirements.txt is on the roadmap)
-pip install fastapi uvicorn requests sentence-transformers chromadb
+cd scraping
+pip install -r requirements.txt      # lighter test-only deps: requirements-test.txt
+cd rag
 uvicorn server:app --host 0.0.0.0 --port 8000
 ```
-Health check: <http://localhost:8000/health>
+Endpoints: `/health` · `/stats` · interactive API docs at <http://localhost:8000/docs>.
+Configuration is environment-driven — override any default with a `VGW_` variable,
+e.g. `VGW_OLLAMA_MODEL=llama3.1:70b`.
 
 ### 3. Run the Android app
 Open the project in Android Studio and run on an emulator.

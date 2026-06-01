@@ -15,3 +15,11 @@ scraping/data/
 scraping/**/__pycache__/
 scraping/**/*.pyc
 scraping/wikis/.scrapy/
+
+# Python tooling
+.venv/
+scraping/**/.venv/
+.pytest_cache/
+scraping/**/.pytest_cache/
+.ruff_cache/
+scraping/**/.ruff_cache/

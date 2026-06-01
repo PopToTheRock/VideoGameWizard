@@ -240,10 +240,16 @@ cd scraping/rag && py embed.py
 ```
 
 ### RAG Server (`server.py`)
-- FastAPI app, port 8000
-- `POST /chat` — receives `{message, history}`, retrieves top-5 chunks, calls Ollama
-- `GET /health` — returns chunk count
-- Loads ChromaDB + embedding model at startup (takes ~10s)
+- FastAPI app, port 8000. **Async throughout** — Ollama is called via `httpx.AsyncClient`.
+- **Env-driven config** via pydantic-settings (`Settings`, `VGW_` prefix). Resources
+  (ChromaDB collection, embedding model, HTTP client) load in a `lifespan` and are supplied
+  by **dependency injection** — which is what makes the endpoints unit-testable.
+- `POST /chat` — `{message, history}` → top-k chunks → Ollama. Validates input (non-blank,
+  ≤4096 chars; history roles must be `user`/`assistant`); returns 502 on Ollama failure.
+- `GET /health` — chunk count · `GET /stats` — model/collection/config · `/docs` — OpenAPI UI
+- Heavy imports (chromadb, sentence-transformers) are deferred to `lifespan` so the module
+  imports without the ML stack — tests run on just `requirements-test.txt`.
+- Tests: `scraping/rag/tests/` (pytest, mocked ChromaDB + Ollama). Lint/format: `ruff` (see `ruff.toml`).
 
 ```bash
 cd scraping/rag
