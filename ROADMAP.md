@@ -31,12 +31,12 @@ Legend: ✅ done · 🚧 in progress · ⬜ not started
 ## Milestone 2 — Engineering rigor: tests + CI + linting
 *Goal: green checkmarks and a visible testing discipline.*
 
-- ⬜ **Android unit tests** (JUnit + MockK + Turbine + coroutines-test): `HomeViewModel`
-  (success / network-error / timeout / cancellation / validation / concurrent-send guard),
-  `ChatRepository` (mapping, `Result`, cancellation), error-message classifier
+- ✅ **Android unit tests** (JUnit + MockK + coroutines-test): `HomeViewModel`
+  (success / network-error / timeout / cancellation-safety / validation / concurrent-send guard),
+  `ChatRepository` (role mapping, `Result`, cancellation rethrow) — 19 tests
 - ⬜ **Python tests** (pytest): chunker pure functions + edge cases, cleaner regex,
   fetcher helpers, FastAPI endpoints with mocked Ollama + ChromaDB
-- ⬜ **GitHub Actions CI**: Android build + test + lint; Python lint + test; coverage badge
+- 🚧 **GitHub Actions CI**: Android build + unit test (`android-ci.yml`); lint + Python to follow
 - ⬜ **Linting/formatting**: Spotless + ktlint and detekt (Kotlin); ruff + black (Python);
   `.editorconfig`
 - ⬜ **`requirements.txt` / `pyproject.toml`** with pinned versions

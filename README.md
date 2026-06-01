@@ -6,6 +6,7 @@
 > everything runs on consumer hardware.
 
 <!-- Badges -->
+[![Android CI](https://github.com/PopToTheRock/VideoGameWizard/actions/workflows/android-ci.yml/badge.svg)](https://github.com/PopToTheRock/VideoGameWizard/actions/workflows/android-ci.yml)
 ![Platform](https://img.shields.io/badge/platform-Android-3DDC84?logo=android&logoColor=white)
 ![Kotlin](https://img.shields.io/badge/Kotlin-2.x-7F52FF?logo=kotlin&logoColor=white)
 ![Jetpack Compose](https://img.shields.io/badge/UI-Jetpack%20Compose-4285F4?logo=jetpackcompose&logoColor=white)
