@@ -17,7 +17,7 @@ This is an Android project built with Gradle. Use Android Studio or the Gradle w
 ./gradlew connectedAndroidTest
 
 # Run a single instrumented test class
-./gradlew connectedAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.example.videogamewizard.NavigationTest
+./gradlew connectedAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=dev.alexn.videogamewizard.NavigationTest
 
 # Run unit tests (currently none exist)
 ./gradlew test
@@ -39,7 +39,7 @@ uvicorn server:app --host 0.0.0.0 --port 8000
 
 Health check: `http://localhost:8000/health`
 
-**Physical device**: change `BASE_URL` in `data/network/RetrofitClient.kt` from `10.0.2.2` to your PC's local IP.
+**Physical device**: override the `BASE_URL` `buildConfigField` in `app/build.gradle.kts` (surfaced via `BuildConfig.BASE_URL`) with your PC's local IP, e.g. `192.168.1.42`.
 
 ---
 
@@ -50,7 +50,7 @@ The app is a single-module Android project (`app`) using **Jetpack Compose** and
 ### Package Structure
 
 ```
-com.example.videogamewizard/
+dev.alexn.videogamewizard/
 ├── MainActivity.kt
 ├── navigation/
 │   ├── AppNavGraph.kt          # NavHost with Welcome + Home routes
@@ -264,40 +264,22 @@ uvicorn server:app --host 0.0.0.0 --port 8000
 
 ## Pending Code Review Issues
 
-These were identified in a full code review and are not yet implemented. Address them before shipping.
+These were identified in a full code review. See `ROADMAP.md` for the broader portfolio plan.
 
-### High Priority
+### Resolved (Milestone 1)
 
-**Issue 6 — Hardcoded UI strings**
-`ChatBubble.kt`, `TypingIndicatorBubble.kt`, `HomeScreen.kt` contain hardcoded strings (`"Wizard AI"`, `"You"`, `"Typing…"`). These should be extracted to `res/values/strings.xml` so they are localisation-ready and easy to update in one place.
+- ✅ **Issue 6 — Hardcoded UI strings**: all UI strings extracted to `res/values/strings.xml` and read via `stringResource(...)`.
+- ✅ **Issue 7 — `LaunchedEffect` auto-scroll**: now keyed on the last message id and `isAiTyping` (catches in-place replacements and the typing indicator), not `messages.size`.
+- ✅ **Issue 8 — `BASE_URL` hardcoded**: moved to a `buildConfigField` in `app/build.gradle.kts`, read via `BuildConfig.BASE_URL`.
+- ✅ **Issue 9 — Fixed-size button**: `WelcomeScreen` button no longer hard-codes width/height; it sizes to content + padding so it scales with font-size settings.
+- ✅ **Issue 10 — Missing `@Immutable`**: added to `ChatMessage` and `HomeUiState`.
+- ✅ **Timeout magic numbers**: `RetrofitClient` timeouts extracted to named constants with a comment.
 
-**Issue 7 — `LaunchedEffect` auto-scroll keyed on wrong value**
-`HomeScreen.kt` keys its auto-scroll `LaunchedEffect` on `messages.size`. This misses the case where a message is replaced (e.g. an error message replaces a typing indicator) because the size doesn't change. Key on the ID of the last message instead:
-```kotlin
-val lastId = messages.lastOrNull()?.id
-LaunchedEffect(lastId) { /* scroll to bottom */ }
-```
+### Still open (tracked in ROADMAP.md)
 
-**Issue 8 — `BASE_URL` hardcoded in `RetrofitClient.kt`**
-`"http://10.0.2.2:8000/"` only works on the emulator. On a physical device you must edit the source. Move the URL to a `BuildConfig` field via `buildConfigField` in `build.gradle.kts`, or at minimum document it prominently and provide a `BuildVariant`-based override so physical-device testing doesn't require a code edit.
-
-**Issue 9 — Fixed-size button ignores accessibility in `WelcomeScreen.kt`**
-`Modifier.width(200.dp).height(50.dp)` prevents the button from scaling with the user's font-size preference. Use `Modifier.fillMaxWidth(fraction)` and let the button height be driven by padding instead of a hard-coded size, so it respects large-text accessibility settings.
-
-**Issue 10 — Missing `@Stable` / `@Immutable` annotations**
-`ChatMessage` and `HomeUiState` are used as Compose state but lack `@Immutable` / `@Stable` annotations. Without them the Compose compiler conservatively re-composes on every state update. Add `@Immutable` to both (they are fully immutable data classes):
-```kotlin
-@Immutable data class ChatMessage(...)
-@Immutable data class HomeUiState(...)
-```
-
-### Lower Priority (Nice to Have)
-
-- **No unit tests** — `HomeViewModel` and `ChatRepository` have zero unit test coverage. Add JUnit 5 + MockK / Turbine tests for `sendMessage` success/failure/cancellation paths and the `errorMessage` classifier.
-- **No dependency injection** — `HomeViewModel` constructs `ChatRepository()` directly, and `ChatRepository` constructs `RetrofitClient.ragApi` directly. Introduce Hilt (or manual constructor injection for now) so these dependencies can be swapped in tests without reflection hacks.
-- **Timeout magic numbers** — `connectTimeout(10, ...)` and `readTimeout(120, ...)` in `RetrofitClient.kt` are unexplained constants. Extract them to named constants or a config object with a comment explaining why 120s (LLM generation time).
-- **No accessibility `contentDescription`** — Icon buttons (send, clear, etc.) in `UserChatFieldComposer.kt` likely lack `contentDescription`. Screen readers will announce them as unlabelled. Add descriptive strings.
-- **No spacing/typography design system** — padding and text sizes are scattered magic numbers. Consider a `Spacing` object (`object Spacing { val sm = 8.dp; val md = 16.dp ... }`) for consistency.
+- **No unit tests** — `HomeViewModel` and `ChatRepository` have zero unit coverage (Milestone 2).
+- **No dependency injection** — `HomeViewModel` constructs `ChatRepository()` directly. Introduce Hilt (Milestone 3).
+- **No spacing/typography design system** — padding and text sizes are scattered magic numbers. Consider a `Spacing` object for consistency.
 
 ---
 
