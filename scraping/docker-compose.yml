@@ -1,0 +1,44 @@
+# One-command local stack for the VideoGameWizard backend: the RAG server + Ollama.
+#
+#   cd scraping
+#   docker compose up --build
+#   docker compose exec ollama ollama pull llama3.1:8b   # first run only
+#
+# Prerequisite: a prebuilt ChromaDB index at ./data/chromadb
+# (run chunker.py then embed.py to produce it).
+services:
+  rag-server:
+    build: .
+    image: videogamewizard-rag
+    ports:
+      - "8000:8000"
+    environment:
+      VGW_OLLAMA_URL: http://ollama:11434
+      VGW_CHROMA_PATH: /data/chromadb
+      HF_HOME: /models
+    volumes:
+      - ./data:/data        # prebuilt ChromaDB index (read-only at runtime)
+      - hf-cache:/models    # cache the embedding model across restarts
+    depends_on:
+      - ollama
+    restart: unless-stopped
+
+  ollama:
+    image: ollama/ollama:latest
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama-models:/root/.ollama
+    restart: unless-stopped
+    # For GPU acceleration, install the NVIDIA Container Toolkit and uncomment:
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: all
+    #           capabilities: [gpu]
+
+volumes:
+  hf-cache:
+  ollama-models:

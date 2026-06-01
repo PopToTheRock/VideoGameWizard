@@ -1,0 +1,16 @@
+# Keep the build context small and reproducible.
+.venv/
+**/__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+
+# The vector index is large and mounted as a volume, not baked into the image.
+data/
+
+# Not needed at runtime.
+rag/tests/
+wikipedia/
+wikigg/
+wikis/
+*.md
