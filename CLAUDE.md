@@ -109,7 +109,18 @@ Response flows back to HomeViewModel → UI
 - `retrofit2` + `okhttp3` for HTTP
 - `kotlinx-serialization-json` for JSON
 - `retrofit2-kotlinx-serialization-converter` (JakeWharton) for Retrofit ↔ kotlinx.serialization
+- `androidx.room` (runtime/ktx + kapt compiler) for local chat-history persistence
 - `minSdk = 24`, `targetSdk = 36`, Java 21
+
+### Persistence & Dependency Injection
+
+- **Room is the single source of truth for chat messages.** `ChatDao.observeAll()` exposes a
+  `Flow<List<ChatMessageEntity>>` that `HomeViewModel` maps and `combine`s with transient UI
+  state (input, typing) into `HomeUiState`. Sending/clearing writes through `ChatHistoryRepository`
+  (Room-backed), so the conversation survives app restart. Code: `data/local/` + `data/repository/`.
+- **Manual dependency injection** (no Hilt yet — its Gradle plugin lags AGP 9.0): `VideoGameWizardApp`
+  builds a `DefaultAppContainer` (`di/`) holding the Room DB + repositories, and
+  `HomeViewModel.Factory` pulls them via `APPLICATION_KEY`. Unit tests inject fakes/mocks directly.
 
 ---
 

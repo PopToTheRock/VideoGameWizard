@@ -43,7 +43,7 @@ import dev.alexn.videogamewizard.ui.theme.Purple40
 @Composable
 fun HomeScreen(
     onBack: () -> Unit,
-    viewModel: HomeViewModel = viewModel(),
+    viewModel: HomeViewModel = viewModel(factory = HomeViewModel.Factory),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val listState = rememberLazyListState()

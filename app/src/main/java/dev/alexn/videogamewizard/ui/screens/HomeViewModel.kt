@@ -1,128 +1,101 @@
 package dev.alexn.videogamewizard.ui.screens
 
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import androidx.lifecycle.viewmodel.initializer
+import androidx.lifecycle.viewmodel.viewModelFactory
+import dev.alexn.videogamewizard.VideoGameWizardApp
 import dev.alexn.videogamewizard.data.model.ChatAuthor
-import dev.alexn.videogamewizard.data.model.ChatMessage
+import dev.alexn.videogamewizard.data.repository.ChatHistoryRepository
 import dev.alexn.videogamewizard.data.repository.ChatRepository
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.io.IOException
 import java.net.ConnectException
 import java.net.SocketTimeoutException
-import java.util.concurrent.atomic.AtomicLong
 
-// Issue 4: cap input to prevent oversized requests reaching the server
+// Issue 4: cap input to prevent oversized requests reaching the server.
 private const val MAX_INPUT_LENGTH = 4096
 
 class HomeViewModel(
-    private val repository: ChatRepository = ChatRepository(),
+    private val chatRepository: ChatRepository,
+    private val historyRepository: ChatHistoryRepository,
 ) : ViewModel() {
-    // Issue 3: atomic counter guarantees unique, collision-free IDs
-    // regardless of how quickly messages are created
-    private val idCounter = AtomicLong(2)
 
-    private fun nextId() = idCounter.getAndIncrement()
+    /** Transient, in-memory UI state that isn't worth persisting. */
+    private data class TransientState(val input: String = "", val isAiTyping: Boolean = false)
 
-    private val _uiState = MutableStateFlow(HomeUiState())
-    val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
+    private val transient = MutableStateFlow(TransientState())
+
+    // Persisted messages (single source of truth) combined with transient UI state.
+    val uiState: StateFlow<HomeUiState> =
+        combine(historyRepository.messages, transient) { messages, t ->
+            HomeUiState(messages = messages, input = t.input, isAiTyping = t.isAiTyping)
+        }.stateIn(viewModelScope, SharingStarted.Eagerly, HomeUiState())
+
+    init {
+        // Seed the greeting on first launch only (empty history).
+        viewModelScope.launch {
+            if (historyRepository.count() == 0) {
+                historyRepository.append(ChatAuthor.AI, GREETING)
+            }
+        }
+    }
 
     fun onInputChange(value: String) {
-        _uiState.update { it.copy(input = value) }
+        transient.update { it.copy(input = value) }
     }
 
     fun sendMessage() {
-        // Issue 1: guard against concurrent sends — if a request is already
-        // in flight, ignore subsequent calls until it completes.
-        // The UI also disables the send button while isAiTyping = true,
-        // but this guard ensures correctness even if called programmatically.
-        if (_uiState.value.isAiTyping) return
+        // Issue 1: ignore sends while a request is already in flight. The send
+        // button is also disabled, but this guards programmatic calls too.
+        if (transient.value.isAiTyping) return
 
-        val trimmed = _uiState.value.input.trim()
-
-        // Issue 4: reject empty or oversized input
+        val trimmed = transient.value.input.trim()
+        // Issue 4: reject empty or oversized input.
         if (trimmed.isEmpty() || trimmed.length > MAX_INPUT_LENGTH) return
 
-        val userMessage =
-            ChatMessage(
-                id = nextId(),
-                author = ChatAuthor.USER,
-                text = trimmed,
-            )
-        val updatedMessages = _uiState.value.messages + userMessage
-        _uiState.update {
-            it.copy(messages = updatedMessages, input = "", isAiTyping = true)
-        }
+        // Context for the model = the conversation shown before this message.
+        val history = uiState.value.messages
+        // Set typing synchronously so a concurrent send is reliably guarded.
+        transient.update { it.copy(input = "", isAiTyping = true) }
 
         viewModelScope.launch {
-            val history = updatedMessages.dropLast(1)
+            historyRepository.append(ChatAuthor.USER, trimmed)
             try {
-                // Issue 2: fold callbacks both include isAiTyping = false so the
-                // typing indicator is cleared in a single atomic state update
-                repository.sendMessage(trimmed, history).fold(
-                    onSuccess = { response ->
-                        _uiState.update {
-                            it.copy(
-                                messages =
-                                it.messages +
-                                    ChatMessage(
-                                        id = nextId(),
-                                        author = ChatAuthor.AI,
-                                        text = response.response,
-                                    ),
-                                isAiTyping = false,
-                            )
-                        }
-                    },
-                    onFailure = { exception ->
-                        // Issue 5: inspect exception type to give the user
-                        // a more actionable error message
-                        _uiState.update {
-                            it.copy(
-                                messages =
-                                it.messages +
-                                    ChatMessage(
-                                        id = nextId(),
-                                        author = ChatAuthor.AI,
-                                        text = errorMessage(exception),
-                                    ),
-                                isAiTyping = false,
-                            )
-                        }
-                    },
-                )
+                val reply =
+                    chatRepository.sendMessage(trimmed, history).fold(
+                        onSuccess = { it.response },
+                        // Issue 5: map the failure to an actionable message.
+                        onFailure = { errorMessage(it) },
+                    )
+                historyRepository.append(ChatAuthor.AI, reply)
+                transient.update { it.copy(isAiTyping = false) }
             } catch (e: CancellationException) {
-                // Issue 2: if the coroutine is cancelled (e.g. user navigates away
-                // and ViewModel is cleared), ensure the typing indicator is always
-                // reset before re-throwing so the state is never left inconsistent
-                _uiState.update { it.copy(isAiTyping = false) }
+                // Always clear the typing indicator before propagating cancellation.
+                transient.update { it.copy(isAiTyping = false) }
                 throw e
             }
         }
     }
 
     fun clearChat() {
-        _uiState.update {
-            it.copy(
-                messages =
-                listOf(
-                    ChatMessage(
-                        id = nextId(),
-                        author = ChatAuthor.AI,
-                        text = "Chat cleared. What do you want help with?",
-                    ),
-                ),
-                isAiTyping = false,
-            )
+        viewModelScope.launch {
+            historyRepository.clear()
+            historyRepository.append(ChatAuthor.AI, CLEARED)
         }
+        transient.update { it.copy(isAiTyping = false) }
     }
 
     // Issue 5: differentiate error types so the user knows whether to retry,
-    // check their connection, or wait for the server
+    // check their connection, or wait for the server.
     private fun errorMessage(exception: Throwable): String = when (exception) {
         is SocketTimeoutException ->
             "Request timed out. The server may be busy — try again."
@@ -130,5 +103,24 @@ class HomeViewModel(
             "Couldn't reach the server. Make sure it's running on your PC."
         else ->
             "Something went wrong. Please try again."
+    }
+
+    companion object {
+        private const val GREETING =
+            "Hi! Tell me what game you're playing and what you want to improve."
+        private const val CLEARED = "Chat cleared. What do you want help with?"
+
+        /** Manual-DI factory: pulls repositories from the app's AppContainer. */
+        val Factory: ViewModelProvider.Factory = viewModelFactory {
+            initializer {
+                val app =
+                    this[ViewModelProvider.AndroidViewModelFactory.APPLICATION_KEY]
+                        as VideoGameWizardApp
+                HomeViewModel(
+                    chatRepository = app.container.chatRepository,
+                    historyRepository = app.container.chatHistoryRepository,
+                )
+            }
+        }
     }
 }

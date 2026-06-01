@@ -82,7 +82,7 @@ flowchart LR
 
 | Layer | Technologies |
 |------|--------------|
-| **Android** | Kotlin, Jetpack Compose, Material 3, Navigation Compose (type-safe routes), MVVM + `StateFlow`, Coroutines, Retrofit + OkHttp, kotlinx.serialization |
+| **Android** | Kotlin, Jetpack Compose, Material 3, Navigation Compose (type-safe routes), MVVM + `StateFlow`, Coroutines, Retrofit + OkHttp, kotlinx.serialization, Room (chat-history persistence), manual DI (`AppContainer`) |
 | **Backend** | Python, FastAPI, Uvicorn, Pydantic |
 | **ML / RAG** | sentence-transformers (`all-MiniLM-L6-v2`), ChromaDB (cosine, HNSW), Ollama, Llama 3.1 8B |
 | **Data** | MediaWiki Action API, JSONL, regex-based cleaning |
