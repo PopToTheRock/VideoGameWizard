@@ -1,3 +1,19 @@
 <resources>
     <string name="app_name">Video Game Wizard</string>
+
+    <!-- Welcome screen -->
+    <string name="welcome_title">Welcome to Video Game Wizard!</string>
+    <string name="welcome_get_started">Get Started</string>
+
+    <!-- Chat screen -->
+    <string name="chat_title">AI Chat</string>
+    <string name="chat_input_label">Message</string>
+    <string name="chat_author_user">You</string>
+    <string name="chat_author_ai">Wizard AI</string>
+    <string name="chat_typing">Typing…</string>
+
+    <!-- Content descriptions (accessibility) -->
+    <string name="cd_back">Back</string>
+    <string name="cd_clear_chat">Clear chat</string>
+    <string name="cd_send">Send</string>
 </resources>

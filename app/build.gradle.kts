@@ -6,17 +6,23 @@ plugins {
 }
 
 android {
-    namespace = "com.example.videogamewizard"
+    namespace = "dev.alexn.videogamewizard"
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.example.videogamewizard"
+        applicationId = "dev.alexn.videogamewizard"
         minSdk = 24
         targetSdk = 36
         versionCode = 1
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        // Base URL of the local RAG server, exposed via BuildConfig so it can be
+        // overridden per build type / flavor without editing source.
+        //   Emulator:        10.0.2.2 maps to the host machine's localhost.
+        //   Physical device: override with the PC's LAN IP, e.g. 192.168.1.42.
+        buildConfigField("String", "BASE_URL", "\"http://10.0.2.2:8000/\"")
     }
 
     buildTypes {
@@ -35,6 +41,7 @@ android {
 
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }
 
