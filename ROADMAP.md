@@ -36,9 +36,12 @@ Legend: ✅ done · 🚧 in progress · ⬜ not started
   `ChatRepository` (role mapping, `Result`, cancellation rethrow) — 19 tests
 - ⬜ **Python tests** (pytest): chunker pure functions + edge cases, cleaner regex,
   fetcher helpers, FastAPI endpoints with mocked Ollama + ChromaDB
-- 🚧 **GitHub Actions CI**: Android build + unit test (`android-ci.yml`); lint + Python to follow
-- ⬜ **Linting/formatting**: Spotless + ktlint and detekt (Kotlin); ruff + black (Python);
-  `.editorconfig`
+- ✅ **GitHub Actions CI**: Android build + unit test + Spotless + Android Lint (`android-ci.yml`),
+  green on `master`; Python steps to follow
+- 🚧 **Linting/formatting**: ✅ Spotless + ktlint (Kotlin formatting) and Android Lint wired into CI;
+  detekt deferred (1.23.x lags on Kotlin 2.3); ⬜ ruff + black (Python) still to come
+- ⬜ **AGP 9.0 cleanup** (deferred): migrate to built-in Kotlin (`android.builtInKotlin`,
+  drop the `kotlin.android` plugin) to clear deprecation warnings — non-urgent (removed in AGP 10)
 - ⬜ **`requirements.txt` / `pyproject.toml`** with pinned versions
 
 ## Milestone 3 — Backend hardening
