@@ -10,6 +10,8 @@ import dev.alexn.videogamewizard.data.model.ChatAuthor
 import dev.alexn.videogamewizard.data.repository.ChatHistoryRepository
 import dev.alexn.videogamewizard.data.repository.ChatRepository
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -33,6 +35,8 @@ class HomeViewModel(
     private data class TransientState(val input: String = "", val isAiTyping: Boolean = false)
 
     private val transient = MutableStateFlow(TransientState())
+
+    private var sendJob: Job? = null
 
     // Persisted messages (single source of truth) combined with transient UI state.
     val uiState: StateFlow<HomeUiState> =
@@ -67,7 +71,7 @@ class HomeViewModel(
         // Set typing synchronously so a concurrent send is reliably guarded.
         transient.update { it.copy(input = "", isAiTyping = true) }
 
-        viewModelScope.launch {
+        sendJob = viewModelScope.launch {
             historyRepository.append(ChatAuthor.USER, trimmed)
             try {
                 val reply =
@@ -87,7 +91,12 @@ class HomeViewModel(
     }
 
     fun clearChat() {
+        // Abort any in-flight request first so its (now-stale) reply can't land
+        // after the wipe, then reset to a single cleared-chat message.
+        val inFlight = sendJob
+        sendJob = null
         viewModelScope.launch {
+            inFlight?.cancelAndJoin()
             historyRepository.clear()
             historyRepository.append(ChatAuthor.AI, CLEARED)
         }

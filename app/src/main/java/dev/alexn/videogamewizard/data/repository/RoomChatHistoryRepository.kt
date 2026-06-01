@@ -29,7 +29,9 @@ class RoomChatHistoryRepository(private val dao: ChatDao) : ChatHistoryRepositor
 
     private fun toDomain(entity: ChatMessageEntity): ChatMessage = ChatMessage(
         id = entity.id,
-        author = ChatAuthor.valueOf(entity.author),
+        // Non-throwing lookup; fall back to AI if a future schema ever stores an
+        // unrecognised author (avoids ChatAuthor.valueOf throwing on bad data).
+        author = ChatAuthor.entries.firstOrNull { it.name == entity.author } ?: ChatAuthor.AI,
         text = entity.text,
     )
 }

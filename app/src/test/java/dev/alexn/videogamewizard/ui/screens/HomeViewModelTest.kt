@@ -10,6 +10,7 @@ import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
 import io.mockk.slot
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -226,6 +227,33 @@ class HomeViewModelTest {
         assertEquals(ChatAuthor.AI, state.messages[0].author)
         assertEquals("Chat cleared. What do you want help with?", state.messages[0].text)
         assertFalse(state.isAiTyping)
+    }
+
+    @Test
+    fun `clearChat aborts an in-flight request so no stale reply lands`() = runTest(scheduler) {
+        val gate = CompletableDeferred<Unit>()
+        coEvery { chatRepository.sendMessage(any(), any()) } coAnswers {
+            gate.await() // stay in flight until released
+            Result.success(ChatResponse(response = "late reply"))
+        }
+
+        val vm = newViewModel()
+        vm.onInputChange("hi")
+        vm.sendMessage()
+        advanceUntilIdle() // request is in flight, suspended on the gate
+
+        vm.clearChat()
+        advanceUntilIdle() // cancels the send, then clears + seeds the cleared message
+
+        val cleared = vm.uiState.value
+        assertEquals(1, cleared.messages.size)
+        assertEquals("Chat cleared. What do you want help with?", cleared.messages[0].text)
+        assertFalse(cleared.isAiTyping)
+
+        // Releasing the gate must NOT resurrect the cancelled reply.
+        gate.complete(Unit)
+        advanceUntilIdle()
+        assertEquals(1, vm.uiState.value.messages.size)
     }
 
     @Test

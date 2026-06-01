@@ -57,6 +57,9 @@ Legend: ✅ done · 🚧 in progress · ⬜ not started
   restart), wired through a manual-DI `AppContainer` + a `ViewModelProvider.Factory`
 - ⬜ **Hilt** DI — *deferred*: the Hilt Gradle plugin (latest 2.56.x) doesn't support AGP 9.0
   yet. Using clean manual constructor-injection DI (`AppContainer`) until Hilt catches up.
+- ⬜ **Pre-ship polish** (from code review): slim the Docker image with a server-only
+  `requirements-server.txt` (drop scrapy/bs4/requests); add a Room migration strategy
+  (schema export + migrations, or destructive fallback) before the first schema change.
 
 ## Milestone 4 — ML depth: evaluation + QLoRA fine-tuning *(the headline)*
 *Goal: prove you can measure and improve a model, not just wire one up.*
