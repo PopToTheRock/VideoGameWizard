@@ -23,13 +23,13 @@ fun UserChatFieldComposer(
     value: String,
     onValueChange: (String) -> Unit,
     onSend: () -> Unit,
-    enabled: Boolean
+    enabled: Boolean,
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .padding(12.dp),
-        verticalAlignment = Alignment.CenterVertically
+        verticalAlignment = Alignment.CenterVertically,
     ) {
         OutlinedTextField(
             modifier = Modifier.weight(1f),
@@ -37,16 +37,16 @@ fun UserChatFieldComposer(
             onValueChange = onValueChange,
             enabled = enabled,
             label = { Text(stringResource(R.string.chat_input_label)) },
-            singleLine = true
+            singleLine = true,
         )
         Spacer(Modifier.width(8.dp))
         IconButton(
             onClick = onSend,
-            enabled = enabled && value.isNotBlank()
+            enabled = enabled && value.isNotBlank(),
         ) {
             Icon(
                 imageVector = Icons.AutoMirrored.Filled.Send,
-                contentDescription = stringResource(R.string.cd_send)
+                contentDescription = stringResource(R.string.cd_send),
             )
         }
     }

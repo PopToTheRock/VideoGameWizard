@@ -17,7 +17,6 @@ import org.junit.Rule
 import org.junit.Test
 
 class NavigationTest {
-
     @get:Rule
     val composeTestRule = createComposeRule()
     lateinit var navController: TestNavHostController
@@ -31,7 +30,7 @@ class NavigationTest {
         }
     }
 
-    //Test navigation to the welcome screen (Initial screen)
+    // Test navigation to the welcome screen (Initial screen)
 
     @Test
     fun appNavHost_verifyStartDestination() {

@@ -9,8 +9,9 @@ import dev.alexn.videogamewizard.data.network.RagApi
 import dev.alexn.videogamewizard.data.network.RetrofitClient
 import kotlinx.coroutines.CancellationException
 
-class ChatRepository(private val api: RagApi = RetrofitClient.ragApi) {
-
+class ChatRepository(
+    private val api: RagApi = RetrofitClient.ragApi,
+) {
     /**
      * Sends [message] to the RAG server along with [history] for context.
      * Returns a [Result] wrapping the server response.
@@ -26,17 +27,18 @@ class ChatRepository(private val api: RagApi = RetrofitClient.ragApi) {
             api.chat(
                 ChatRequest(
                     message = message,
-                    history = history.map { msg ->
+                    history =
+                    history.map { msg ->
                         HistoryMessage(
                             role = if (msg.author == ChatAuthor.USER) "user" else "assistant",
                             content = msg.text,
                         )
                     },
-                )
-            )
+                ),
+            ),
         )
     } catch (e: CancellationException) {
-        throw e  // must not be swallowed — lets the coroutine cancel cleanly
+        throw e // must not be swallowed — lets the coroutine cancel cleanly
     } catch (e: Exception) {
         Result.failure(e)
     }

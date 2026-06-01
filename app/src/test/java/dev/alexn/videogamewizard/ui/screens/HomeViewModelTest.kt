@@ -24,7 +24,6 @@ import java.net.SocketTimeoutException
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class HomeViewModelTest {
-
     @get:Rule
     val mainDispatcherRule = MainDispatcherRule()
 
@@ -85,7 +84,11 @@ class HomeViewModelTest {
         advanceUntilIdle()
 
         assertEquals("spaced out", messageSlot.captured)
-        assertEquals("spaced out", vm.uiState.value.messages[1].text)
+        assertEquals(
+            "spaced out",
+            vm.uiState.value.messages[1]
+                .text,
+        )
     }
 
     @Test
@@ -202,12 +205,17 @@ class HomeViewModelTest {
         vm.sendMessage()
         advanceUntilIdle()
 
-        val ids = vm.uiState.value.messages.map { it.id }
+        val ids =
+            vm.uiState.value.messages
+                .map { it.id }
         assertEquals(ids.size, ids.distinct().size)
     }
 
     /** Sends a message whose repository call fails and asserts the rendered AI error text. */
-    private fun TestScope.assertErrorMessage(failure: Throwable, expected: String) {
+    private fun TestScope.assertErrorMessage(
+        failure: Throwable,
+        expected: String,
+    ) {
         coEvery { repository.sendMessage(any(), any()) } returns Result.failure(failure)
 
         val vm = HomeViewModel(repository)
@@ -215,7 +223,9 @@ class HomeViewModelTest {
         vm.sendMessage()
         advanceUntilIdle()
 
-        val last = vm.uiState.value.messages.last()
+        val last =
+            vm.uiState.value.messages
+                .last()
         assertEquals(ChatAuthor.AI, last.author)
         assertEquals(expected, last.text)
         assertFalse(vm.uiState.value.isAiTyping)

@@ -24,24 +24,24 @@ fun TypingIndicatorBubble() {
     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Start) {
         Card(
             modifier = Modifier.fillMaxWidth(0.6f),
-            shape = RoundedCornerShape(16.dp)
+            shape = RoundedCornerShape(16.dp),
         ) {
             Column(
                 modifier = Modifier
                     .background(MaterialTheme.colorScheme.surface)
-                    .padding(12.dp)
+                    .padding(12.dp),
             ) {
                 Text(
                     text = stringResource(R.string.chat_author_ai),
                     style = MaterialTheme.typography.labelMedium,
                     fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.75f)
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.75f),
                 )
                 Spacer(Modifier.height(4.dp))
                 Text(
                     text = stringResource(R.string.chat_typing),
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
                 )
             }
         }

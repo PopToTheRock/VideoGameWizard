@@ -5,5 +5,7 @@ import retrofit2.http.POST
 
 interface RagApi {
     @POST("chat")
-    suspend fun chat(@Body request: ChatRequest): ChatResponse
+    suspend fun chat(
+        @Body request: ChatRequest,
+    ): ChatResponse
 }

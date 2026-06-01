@@ -10,5 +10,5 @@ import androidx.compose.runtime.Immutable
 data class ChatMessage(
     val id: Long,
     val author: ChatAuthor,
-    val text: String
+    val text: String,
 )

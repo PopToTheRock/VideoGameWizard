@@ -43,7 +43,7 @@ import dev.alexn.videogamewizard.ui.theme.Purple40
 @Composable
 fun HomeScreen(
     onBack: () -> Unit,
-    viewModel: HomeViewModel = viewModel()
+    viewModel: HomeViewModel = viewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val listState = rememberLazyListState()
@@ -67,7 +67,7 @@ fun HomeScreen(
             Surface(
                 color = MaterialTheme.colorScheme.primary,
                 contentColor = Color.White,
-                shadowElevation = 6.dp
+                shadowElevation = 6.dp,
             ) {
                 TopAppBar(
                     title = { Text(stringResource(R.string.chat_title)) },
@@ -75,7 +75,7 @@ fun HomeScreen(
                         IconButton(onClick = onBack) {
                             Icon(
                                 imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                                contentDescription = stringResource(R.string.cd_back)
+                                contentDescription = stringResource(R.string.cd_back),
                             )
                         }
                     },
@@ -83,16 +83,16 @@ fun HomeScreen(
                         IconButton(onClick = viewModel::clearChat) {
                             Icon(
                                 imageVector = Icons.Filled.Delete,
-                                contentDescription = stringResource(R.string.cd_clear_chat)
+                                contentDescription = stringResource(R.string.cd_clear_chat),
                             )
                         }
                     },
                     colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = Color.Transparent
-                    )
+                        containerColor = Color.Transparent,
+                    ),
                 )
             }
-        }
+        },
     ) { innerPadding ->
         Column(
             modifier = Modifier
@@ -100,7 +100,7 @@ fun HomeScreen(
                 .background(color = Purple40)
                 .padding(innerPadding)
                 .imePadding()
-                .testTag("home_screen")
+                .testTag("home_screen"),
         ) {
             LazyColumn(
                 modifier = Modifier
@@ -108,7 +108,7 @@ fun HomeScreen(
                     .fillMaxWidth()
                     .padding(horizontal = 12.dp, vertical = 8.dp),
                 state = listState,
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 items(items = uiState.messages, key = { it.id }) { msg ->
                     ChatBubble(message = msg)
@@ -127,7 +127,7 @@ fun HomeScreen(
                 value = uiState.input,
                 onValueChange = viewModel::onInputChange,
                 onSend = viewModel::sendMessage,
-                enabled = !uiState.isAiTyping
+                enabled = !uiState.isAiTyping,
             )
         }
     }

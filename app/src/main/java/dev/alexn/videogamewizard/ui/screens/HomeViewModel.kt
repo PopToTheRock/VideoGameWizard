@@ -22,10 +22,10 @@ private const val MAX_INPUT_LENGTH = 4096
 class HomeViewModel(
     private val repository: ChatRepository = ChatRepository(),
 ) : ViewModel() {
-
     // Issue 3: atomic counter guarantees unique, collision-free IDs
     // regardless of how quickly messages are created
     private val idCounter = AtomicLong(2)
+
     private fun nextId() = idCounter.getAndIncrement()
 
     private val _uiState = MutableStateFlow(HomeUiState())
@@ -47,11 +47,12 @@ class HomeViewModel(
         // Issue 4: reject empty or oversized input
         if (trimmed.isEmpty() || trimmed.length > MAX_INPUT_LENGTH) return
 
-        val userMessage = ChatMessage(
-            id = nextId(),
-            author = ChatAuthor.USER,
-            text = trimmed,
-        )
+        val userMessage =
+            ChatMessage(
+                id = nextId(),
+                author = ChatAuthor.USER,
+                text = trimmed,
+            )
         val updatedMessages = _uiState.value.messages + userMessage
         _uiState.update {
             it.copy(messages = updatedMessages, input = "", isAiTyping = true)
@@ -66,11 +67,13 @@ class HomeViewModel(
                     onSuccess = { response ->
                         _uiState.update {
                             it.copy(
-                                messages = it.messages + ChatMessage(
-                                    id = nextId(),
-                                    author = ChatAuthor.AI,
-                                    text = response.response,
-                                ),
+                                messages =
+                                it.messages +
+                                    ChatMessage(
+                                        id = nextId(),
+                                        author = ChatAuthor.AI,
+                                        text = response.response,
+                                    ),
                                 isAiTyping = false,
                             )
                         }
@@ -80,11 +83,13 @@ class HomeViewModel(
                         // a more actionable error message
                         _uiState.update {
                             it.copy(
-                                messages = it.messages + ChatMessage(
-                                    id = nextId(),
-                                    author = ChatAuthor.AI,
-                                    text = errorMessage(exception),
-                                ),
+                                messages =
+                                it.messages +
+                                    ChatMessage(
+                                        id = nextId(),
+                                        author = ChatAuthor.AI,
+                                        text = errorMessage(exception),
+                                    ),
                                 isAiTyping = false,
                             )
                         }
@@ -103,12 +108,13 @@ class HomeViewModel(
     fun clearChat() {
         _uiState.update {
             it.copy(
-                messages = listOf(
+                messages =
+                listOf(
                     ChatMessage(
                         id = nextId(),
                         author = ChatAuthor.AI,
                         text = "Chat cleared. What do you want help with?",
-                    )
+                    ),
                 ),
                 isAiTyping = false,
             )

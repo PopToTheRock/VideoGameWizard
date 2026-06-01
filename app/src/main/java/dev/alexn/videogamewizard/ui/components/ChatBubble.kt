@@ -28,13 +28,13 @@ fun ChatBubble(message: ChatMessage) {
 
     Row(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = if (isUser) Arrangement.End else Arrangement.Start
+        horizontalArrangement = if (isUser) Arrangement.End else Arrangement.Start,
     ) {
         val bubbleShape = RoundedCornerShape(
             topStart = 16.dp,
             topEnd = 16.dp,
             bottomEnd = if (isUser) 4.dp else 16.dp,
-            bottomStart = if (isUser) 16.dp else 4.dp
+            bottomStart = if (isUser) 16.dp else 4.dp,
         )
 
         val bubbleColor = if (isUser) {
@@ -47,26 +47,26 @@ fun ChatBubble(message: ChatMessage) {
             modifier = Modifier
                 .fillMaxWidth(0.85f)
                 .clip(bubbleShape),
-            shape = bubbleShape
+            shape = bubbleShape,
         ) {
             Column(
                 modifier = Modifier
                     .background(bubbleColor)
-                    .padding(12.dp)
+                    .padding(12.dp),
             ) {
                 Text(
                     text = stringResource(
-                        if (isUser) R.string.chat_author_user else R.string.chat_author_ai
+                        if (isUser) R.string.chat_author_user else R.string.chat_author_ai,
                     ),
                     style = MaterialTheme.typography.labelMedium,
                     fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.75f)
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.75f),
                 )
                 Spacer(Modifier.height(4.dp))
                 Text(
                     text = message.text,
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurface
+                    color = MaterialTheme.colorScheme.onSurface,
                 )
             }
         }

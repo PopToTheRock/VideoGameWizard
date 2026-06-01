@@ -33,30 +33,30 @@ fun WelcomeScreen(onGetStarted: () -> Unit) {
                 .fillMaxSize()
                 .testTag("welcome_screen")
                 .background(color = Purple40)
-                .padding(innerPadding)
+                .padding(innerPadding),
         ) {
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .wrapContentSize(Alignment.Center)
+                    .wrapContentSize(Alignment.Center),
             ) {
                 Box(
                     modifier = Modifier
                         .border(
                             width = 4.dp,
                             color = PurpleGrey40,
-                            shape = RoundedCornerShape(16.dp)
+                            shape = RoundedCornerShape(16.dp),
                         )
                         .background(
                             shape = RoundedCornerShape(16.dp),
-                            color = PurpleGrey80
+                            color = PurpleGrey80,
                         )
                         .padding(16.dp),
-                    contentAlignment = Alignment.Center
+                    contentAlignment = Alignment.Center,
                 ) {
                     Text(
                         text = stringResource(R.string.welcome_title),
-                        color = Color.DarkGray
+                        color = Color.DarkGray,
                     )
                 }
 
@@ -69,11 +69,11 @@ fun WelcomeScreen(onGetStarted: () -> Unit) {
                     onClick = { onGetStarted() },
                     modifier = Modifier
                         .align(alignment = Alignment.CenterHorizontally)
-                        .padding(horizontal = 32.dp)
+                        .padding(horizontal = 32.dp),
                 ) {
                     Text(
                         text = stringResource(R.string.welcome_get_started),
-                        color = Color.White
+                        color = Color.White,
                     )
                 }
             }

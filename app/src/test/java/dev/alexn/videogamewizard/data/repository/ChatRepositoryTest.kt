@@ -17,7 +17,6 @@ import org.junit.Test
 import java.io.IOException
 
 class ChatRepositoryTest {
-
     private val api: RagApi = mockk()
     private val repository = ChatRepository(api)
 
@@ -37,10 +36,11 @@ class ChatRepositoryTest {
         val requestSlot = slot<ChatRequest>()
         coEvery { api.chat(capture(requestSlot)) } returns ChatResponse(response = "ok")
 
-        val history = listOf(
-            ChatMessage(id = 1, author = ChatAuthor.AI, text = "greeting"),
-            ChatMessage(id = 2, author = ChatAuthor.USER, text = "earlier question"),
-        )
+        val history =
+            listOf(
+                ChatMessage(id = 1, author = ChatAuthor.AI, text = "greeting"),
+                ChatMessage(id = 2, author = ChatAuthor.USER, text = "earlier question"),
+            )
         repository.sendMessage("current question", history)
 
         val request = requestSlot.captured
@@ -48,7 +48,7 @@ class ChatRepositoryTest {
         assertEquals(2, request.history.size)
         assertEquals("assistant", request.history[0].role) // AI -> assistant
         assertEquals("greeting", request.history[0].content)
-        assertEquals("user", request.history[1].role)       // USER -> user
+        assertEquals("user", request.history[1].role) // USER -> user
         assertEquals("earlier question", request.history[1].content)
     }
 

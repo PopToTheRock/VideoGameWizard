@@ -3,6 +3,26 @@ plugins {
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kotlin.serialization)
+    alias(libs.plugins.spotless)
+}
+
+spotless {
+    kotlin {
+        target("src/**/*.kt")
+        targetExclude("**/build/**")
+        // Use Spotless's bundled ktlint version for guaranteed compatibility.
+        ktlint().editorConfigOverride(
+            mapOf(
+                // @Composable functions are PascalCase by convention (Google's
+                // own Compose API guidelines), so exempt them from function-naming.
+                "ktlint_function_naming_ignore_when_annotated_with" to "Composable",
+            ),
+        )
+    }
+    kotlinGradle {
+        target("*.gradle.kts")
+        ktlint()
+    }
 }
 
 android {
@@ -30,7 +50,7 @@ android {
             isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
-                "proguard-rules.pro"
+                "proguard-rules.pro",
             )
         }
     }
@@ -71,7 +91,7 @@ dependencies {
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.ui.test.junit4)
-    androidTestImplementation (libs.androidx.navigation.testing)
+    androidTestImplementation(libs.androidx.navigation.testing)
 
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
