@@ -17,11 +17,10 @@ import time
 from pathlib import Path
 
 import chromadb
+import config
 import numpy as np
 import torch
 from sentence_transformers import SentenceTransformer
-
-import config
 
 logging.basicConfig(
     level=logging.INFO,

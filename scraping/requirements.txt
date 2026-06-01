@@ -1,0 +1,22 @@
+# Runtime dependencies for the VideoGameWizard data pipeline + RAG server.
+# Python 3.11+. For development/test-only deps, see requirements-test.txt.
+
+# --- RAG server ---
+fastapi>=0.115
+uvicorn[standard]>=0.30
+pydantic>=2.9
+pydantic-settings>=2.4
+httpx>=0.27
+
+# --- Embeddings + vector store ---
+sentence-transformers>=3.0
+chromadb>=0.5
+
+# PyTorch: for GPU embedding, install the CUDA build separately, e.g.
+#   pip install torch --index-url https://download.pytorch.org/whl/cu128
+torch>=2.3
+
+# --- Scraping pipeline ---
+requests>=2.32
+scrapy>=2.11
+beautifulsoup4>=4.12

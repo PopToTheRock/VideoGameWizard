@@ -36,25 +36,30 @@ _RE_SENTENCE_SPLIT = re.compile(r"(?<=[.!?])\s+")
 
 
 def split_long_paragraph(para: str, max_chars: int) -> list[str]:
-    """Split a paragraph that exceeds max_chars at sentence boundaries."""
+    """Split a paragraph that exceeds max_chars at sentence boundaries.
+
+    Sentences that are themselves longer than max_chars are hard-split, so no
+    returned piece ever exceeds max_chars (regardless of input shape).
+    """
     sentences = _RE_SENTENCE_SPLIT.split(para)
     pieces: list[str] = []
     current = ""
     for sentence in sentences:
-        if not current:
+        # A single sentence longer than the limit can never fit the buffer:
+        # flush what we have and hard-split it into max_chars-sized pieces.
+        if len(sentence) > max_chars:
+            if current:
+                pieces.append(current)
+                current = ""
+            for i in range(0, len(sentence), max_chars):
+                pieces.append(sentence[i : i + max_chars])
+        elif not current:
             current = sentence
         elif len(current) + 1 + len(sentence) <= max_chars:
             current += " " + sentence
         else:
-            if current:
-                pieces.append(current)
-            # If a single sentence is still too long, hard-split it
-            if len(sentence) > max_chars:
-                for i in range(0, len(sentence), max_chars):
-                    pieces.append(sentence[i : i + max_chars])
-                current = ""
-            else:
-                current = sentence
+            pieces.append(current)
+            current = sentence
     if current:
         pieces.append(current)
     return pieces
@@ -128,9 +133,10 @@ def main() -> None:
 
     total_articles = total_chunks = skipped_chunks = 0
 
-    with open(input_path, encoding="utf-8") as in_f, \
-         open(output_path, "w", encoding="utf-8") as out_f:
-
+    with (
+        open(input_path, encoding="utf-8") as in_f,
+        open(output_path, "w", encoding="utf-8") as out_f,
+    ):
         for raw_line in in_f:
             raw_line = raw_line.strip()
             if not raw_line:
@@ -164,11 +170,21 @@ def main() -> None:
                 total_chunks += 1
 
             if total_articles % 2000 == 0:
-                log.info(f"  Processed {total_articles} articles → {total_chunks} chunks so far...")
+                log.info(
+                    "  Processed %d articles -> %d chunks so far...",
+                    total_articles,
+                    total_chunks,
+                )
 
     avg = total_chunks / total_articles if total_articles else 0
-    log.info(f"Done. Articles: {total_articles}, Chunks: {total_chunks} (avg {avg:.1f}/article), Skipped: {skipped_chunks}")
-    log.info(f"Output: {output_path.resolve()}")
+    log.info(
+        "Done. Articles: %d, Chunks: %d (avg %.1f/article), Skipped: %d",
+        total_articles,
+        total_chunks,
+        avg,
+        skipped_chunks,
+    )
+    log.info("Output: %s", output_path.resolve())
 
 
 if __name__ == "__main__":
