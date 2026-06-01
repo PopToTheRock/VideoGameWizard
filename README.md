@@ -101,8 +101,7 @@ VideoGameWizard/
 │   ├── wikipedia/            # MediaWiki fetcher + cleaner
 │   └── rag/                  # chunker, embedder, FastAPI server
 ├── CLAUDE.md                 # Internal architecture & dev notes
-├── ROADMAP.md                # Portfolio roadmap (this project's plan)
-└── LEARNING_PLAN.md          # Technical learning plan behind the build
+└── ROADMAP.md                # Portfolio roadmap (this project's plan)
 ```
 
 ## 🚀 Getting started

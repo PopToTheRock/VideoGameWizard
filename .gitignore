@@ -23,3 +23,6 @@ scraping/**/.venv/
 scraping/**/.pytest_cache/
 .ruff_cache/
 scraping/**/.ruff_cache/
+
+# Personal learning notes — kept local, not part of the public portfolio repo
+/LEARNING_PLAN.md
