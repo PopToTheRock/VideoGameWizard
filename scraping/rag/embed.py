@@ -9,6 +9,11 @@ Run from scraping/rag/:
 
 Requirements (Windows env):
     pip install sentence-transformers chromadb
+
+Note: this is a one-shot batch script, run manually to (re)build the vector
+index. It is intentionally outside the automated test suite — it imports the
+full ML stack and operates on the on-disk corpus rather than exposing unit-
+testable units.
 """
 
 import json

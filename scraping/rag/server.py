@@ -30,6 +30,7 @@ from typing import Any, Literal
 
 import httpx
 from fastapi import APIRouter, Depends, FastAPI, HTTPException, Request
+from fastapi.concurrency import run_in_threadpool
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -64,8 +65,16 @@ class Settings(BaseSettings):
     chroma_path: str = str(_DEFAULT_CHROMA_PATH)
     top_k: int = 5
     request_timeout_seconds: float = 120.0
-    # A single "*" allows all origins — fine for local development.
-    allowed_origins: list[str] = ["*"]
+    # Browser origins allowed by CORS. The Android client is a native HTTP
+    # client and is unaffected by CORS — this only matters for browser callers
+    # (e.g. the Swagger docs or a future web UI). Override for other hosts via
+    # VGW_ALLOWED_ORIGINS (a JSON list, e.g. '["http://192.168.1.42:5173"]').
+    allowed_origins: list[str] = [
+        "http://localhost",
+        "http://localhost:8000",
+        "http://127.0.0.1",
+        "http://127.0.0.1:8000",
+    ]
 
 
 # ---------------------------------------------------------------------------
@@ -153,12 +162,16 @@ async def chat(
 ) -> ChatResponse:
     query = payload.message
 
-    # 1. Embed the query (tolist() for numpy arrays; list() for plain sequences).
-    embedding = embedder.encode([query], normalize_embeddings=True)[0]
+    # 1. Embed the query. encode() is CPU/GPU-bound and blocking, so run it in a
+    #    threadpool to keep the event loop free. (tolist() for numpy arrays;
+    #    list() for plain sequences.)
+    embedding = (await run_in_threadpool(embedder.encode, [query], normalize_embeddings=True))[0]
     query_vec = embedding.tolist() if hasattr(embedding, "tolist") else list(embedding)
 
-    # 2. Retrieve the top-k relevant chunks.
-    results = collection.query(
+    # 2. Retrieve the top-k relevant chunks. ChromaDB's query is also blocking,
+    #    so offload it as well rather than stalling the event loop.
+    results = await run_in_threadpool(
+        collection.query,
         query_embeddings=[query_vec],
         n_results=settings.top_k,
         include=["documents", "metadatas"],

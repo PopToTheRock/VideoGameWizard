@@ -152,6 +152,21 @@ class HomeViewModelTest {
     }
 
     @Test
+    fun `input is preserved when a send is guarded mid-request`() = runTest(scheduler) {
+        coEvery { repository.sendMessage(any(), any()) } returns
+            Result.success(ChatResponse(response = "ok"))
+
+        val vm = HomeViewModel(repository)
+        vm.onInputChange("first")
+        vm.sendMessage() // first send in flight; clears the input
+        vm.onInputChange("second")
+        vm.sendMessage() // guarded — must not discard what the user typed next
+        advanceUntilIdle()
+
+        assertEquals("second", vm.uiState.value.input)
+    }
+
+    @Test
     fun `timeout failure shows the timeout error message`() = runTest(scheduler) {
         assertErrorMessage(
             failure = SocketTimeoutException(),
