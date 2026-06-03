@@ -145,8 +145,10 @@ Open the project in Android Studio and run on an emulator.
 ## 🗺️ Roadmap
 
 This is an actively-evolving portfolio project. See **[ROADMAP.md](ROADMAP.md)** for the full
-plan — testing & CI, backend hardening, a RAG evaluation harness, and **QLoRA fine-tuning** of
-Llama 3.1 as the headline milestone.
+plan. Highlights shipped: testing & CI, backend hardening, a
+**[RAG evaluation harness](scraping/rag/eval/README.md)** (cross-encoder reranking lifts
+article-level hit@1 0.60→0.75), and **[QLoRA fine-tuning](scraping/finetune/README.md)** of
+Llama 3.1 8B into a grounded RAG reader (`vgw-rag:8b`) — the headline milestone.
 
 ## 📄 License
 

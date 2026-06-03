@@ -72,11 +72,18 @@ Legend: ✅ done · 🚧 in progress · ⬜ not started
   MRR, nDCG@k) at both chunk- and article-level; cross-encoder reranking with before/after
   numbers (article-level hit@1 0.60→0.75, MRR 0.69→0.79). Pure metric fns unit-tested. See
   `eval/README.md`. Deferred: generation metrics (RAGAS faithfulness/answer-relevancy).
-- ⬜ **Fine-tuning data prep**: `chunks.jsonl` → instruction/response pairs in Llama-3 chat
-  format; train/val split
-- ⬜ **QLoRA training**: Unsloth + `SFTTrainer` in WSL2 (bf16 on RTX 5070 Ti); capture loss curve
-- ⬜ **GGUF export**: merge adapter → GGUF → Ollama `Modelfile` → swap model in `server.py`
-- ⬜ **Model card**: training config, loss curve, base-vs-fine-tuned outputs, eval delta
+- ✅ **Fine-tuning data prep** (`scraping/finetune/prepare_data.py`): 1,500 grounded
+  (context+question → answer) examples in `messages` format mirroring the server's exact
+  prompt; **assistant-only loss**; eval chunks excluded (0 leakage). 1,350 train / 150 val.
+- ✅ **QLoRA training** (`train_qlora.py`): Unsloth + TRL `SFTTrainer`, 4-bit Llama 3.1 8B
+  Instruct + LoRA r=16, bf16 on the RTX 5070 Ti (sm_120) in WSL2. ~8.6 min; **train loss
+  0.48→0.19, val loss 0.16 (monotonic ↓, no overfit)**. Loss curve captured.
+- ✅ **Export + integrate**: merge adapter → 16-bit (`export_merged.py`) → `ollama create
+  --quantize q4_K_M` → `vgw-rag:8b` (4.9 GB). Drops into the server via `VGW_OLLAMA_MODEL`.
+  (GGUF quantization routed through Ollama — no llama.cpp/cmake build needed.)
+- ✅ **Model card** (`finetune/README.md`): config, loss curve, base-vs-fine-tuned comparison
+  (`compare_models.py` → `comparison.md`) — fine-tune is measurably more concise + grounded,
+  with honest limitations documented. Deferred: generation-metric (RAGAS) delta.
 
 ## Milestone 5 — Presentation & polish
 *Goal: make it effortless to be impressed.*

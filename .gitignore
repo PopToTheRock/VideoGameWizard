@@ -16,6 +16,12 @@ scraping/data/
 # RAG eval run artifacts (timestamped reports; canonical numbers live in
 # scraping/rag/eval/README.md). The eval_set.jsonl benchmark IS tracked.
 scraping/rag/eval/results/
+
+# QLoRA training outputs (adapter, checkpoints, merged model, GGUF — large).
+# The dataset (data/*.jsonl), loss_curve.png, and training_summary.json ARE tracked.
+scraping/finetune/outputs/
+# Unsloth's JIT-compiled kernel cache (regenerated each run).
+scraping/unsloth_compiled_cache/
 scraping/**/__pycache__/
 scraping/**/*.pyc
 scraping/wikis/.scrapy/

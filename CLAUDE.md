@@ -153,8 +153,8 @@ Android App
 ```
 
 ### Model
-- **Llama 3.1 8B** via Ollama
-- Fine-tuning with **QLoRA** (Unsloth + HuggingFace PEFT) — **not done yet, next step**
+- **Llama 3.1 8B** via Ollama (base default; `vgw-rag:8b` is the QLoRA fine-tune)
+- ✅ Fine-tuned with **QLoRA** (Unsloth + TRL) into a grounded RAG reader — see `finetune/`
 - RAG with **ChromaDB** + **sentence-transformers/all-MiniLM-L6-v2**
 
 ### Developer Machine Specs
@@ -286,6 +286,28 @@ py -m eval.generate_eval_set --n 150 --seed 42   # needs Ollama
 py -m eval.run_eval                               # baseline vs reranked
 ```
 
+### QLoRA Fine-tuning (`finetune/`)
+- Adapts Llama 3.1 8B into a **grounded RAG reader** (answer from retrieved context,
+  concisely, in the VGW voice). Fine-tuning teaches skill/format/style; RAG still supplies
+  facts. Full model card: `finetune/README.md`.
+- `prepare_data.py` (Windows + Ollama) → `data/train.jsonl`/`val.jsonl`: grounded
+  (context+Q→A) examples in `messages` format matching the server prompt; **assistant-only
+  loss**; eval chunks excluded. `train_qlora.py` (**WSL2 venv** `~/vgw-finetune`: Unsloth +
+  TRL, torch cu128 on sm_120) → adapter + `loss_curve.png` + `training_summary.json`.
+  `export_merged.py` (WSL2) merges the adapter to 16-bit; Ollama then quantizes on import.
+  `compare_models.py` produces the base-vs-fine-tuned `comparison.md`.
+- **`import unsloth` must precede trl/transformers** in training scripts. GGUF quantization
+  is routed through `ollama create --quantize` (no llama.cpp/cmake build). `outputs/`
+  (adapter, merged model) is gitignored; the dataset + results are committed.
+- The fine-tuned model is registered as `vgw-rag:8b`; serve it with
+  `VGW_OLLAMA_MODEL=vgw-rag:8b`. Server default stays `llama3.1:8b`.
+
+```bash
+# WSL2: source ~/vgw-finetune/bin/activate ; cd scraping
+python -m finetune.train_qlora --epochs 1     # then: python -m finetune.export_merged
+ollama create vgw-rag:8b --quantize q4_K_M -f finetune/Modelfile   # Windows
+```
+
 ---
 
 ## Build Order
@@ -294,7 +316,7 @@ py -m eval.run_eval                               # baseline vs reranked
 2. ✅ Data cleaning & chunking
 3. ✅ RAG pipeline (ChromaDB + embeddings)
 4. ✅ Wire up Ollama + Android app via RAG server
-5. ⬜ Fine-tuning (QLoRA via Unsloth in WSL2)
+5. ✅ Fine-tuning (QLoRA via Unsloth in WSL2) — `vgw-rag:8b`
 
 ---
 
