@@ -9,9 +9,11 @@ FROM python:3.12-slim
 
 WORKDIR /app
 
-# Install runtime dependencies first for better layer caching.
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+# Install runtime dependencies first for better layer caching. The server only
+# needs requirements-server.txt — the scraping pipeline (scrapy/bs4/requests) is
+# intentionally excluded to keep the image slim.
+COPY requirements-server.txt .
+RUN pip install --no-cache-dir -r requirements-server.txt
 
 # Application code.
 COPY rag/ ./rag/
