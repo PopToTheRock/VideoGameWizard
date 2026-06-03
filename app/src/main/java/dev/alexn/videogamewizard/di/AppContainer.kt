@@ -24,7 +24,15 @@ class DefaultAppContainer(context: Context) : AppContainer {
             context.applicationContext,
             AppDatabase::class.java,
             "videogamewizard.db",
-        ).build()
+        )
+            // Migration strategy: until a schema change actually warrants a
+            // hand-written Migration, drop and recreate. This is a deliberate
+            // trade-off — chat history is local, non-critical, and cheap to
+            // lose, so the simplicity is worth more than preserving old rows.
+            // The exported schemas (see AppDatabase) make swapping in a real
+            // Migration straightforward when that calculus changes.
+            .fallbackToDestructiveMigration(dropAllTables = true)
+            .build()
     }
 
     override val chatRepository: ChatRepository by lazy { ChatRepository() }

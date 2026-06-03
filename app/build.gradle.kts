@@ -70,6 +70,14 @@ kotlin {
     jvmToolchain(21)
 }
 
+kapt {
+    arguments {
+        // Export each Room schema version to app/schemas/ so they can be
+        // version-controlled and used as the baseline for real migrations.
+        arg("room.schemaLocation", "$projectDir/schemas")
+    }
+}
+
 dependencies {
 
     implementation(libs.androidx.core.ktx)
