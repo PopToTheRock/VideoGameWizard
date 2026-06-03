@@ -17,7 +17,8 @@ Legend: ✅ done · 🚧 in progress · ⬜ not started
 ## Milestone 1 — First impressions & quick wins
 *Goal: a stranger landing on the repo immediately gets it and respects it.*
 
-- 🚧 **README.md** — hero, demo media, architecture diagram, feature list, quick start
+- ✅ **README.md** — hero, architecture + pipeline diagrams (mermaid), feature list, tech-stack
+  table, Docker + manual quick-start. (Polished demo video/screenshots deferred to M5.)
 - ✅ **LICENSE** (MIT)
 - ✅ **Rebrand package** `com.example.videogamewizard` → `dev.alexn.videogamewizard`
 - ✅ **Code-review fixes** (from `CLAUDE.md`):
@@ -57,9 +58,11 @@ Legend: ✅ done · 🚧 in progress · ⬜ not started
   restart), wired through a manual-DI `AppContainer` + a `ViewModelProvider.Factory`
 - ⬜ **Hilt** DI — *deferred*: the Hilt Gradle plugin (latest 2.56.x) doesn't support AGP 9.0
   yet. Using clean manual constructor-injection DI (`AppContainer`) until Hilt catches up.
-- ⬜ **Pre-ship polish** (from code review): slim the Docker image with a server-only
-  `requirements-server.txt` (drop scrapy/bs4/requests); add a Room migration strategy
-  (schema export + migrations, or destructive fallback) before the first schema change.
+- ✅ **Pre-ship polish** (from code review): Docker image now installs a server-only
+  `requirements-server.txt` (scrapy/bs4/requests excluded; `requirements.txt` layers them
+  back via `-r` for dev boxes). Room migration strategy in place: schema export on
+  (`exportSchema = true` → version-controlled `app/schemas/`), with a documented
+  `fallbackToDestructiveMigration(dropAllTables = true)` until a real migration is warranted.
 
 ## Milestone 4 — ML depth: evaluation + QLoRA fine-tuning *(the headline)*
 *Goal: prove you can measure and improve a model, not just wire one up.*

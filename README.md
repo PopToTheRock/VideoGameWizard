@@ -112,6 +112,14 @@ VideoGameWizard/
 - **Python 3.11+** for the RAG server
 - A CUDA GPU is recommended for (re)building embeddings, but not required to run the server
 
+> **Fastest path — Docker Compose.** From `scraping/`, `docker compose up --build` brings up
+> both the RAG server and Ollama (the image installs only `requirements-server.txt`, so it
+> stays slim). On first run, pull the model into the Ollama service:
+> `docker compose exec ollama ollama pull llama3.1:8b`. A prebuilt ChromaDB index is expected
+> at `scraping/data/chromadb` — build it once with `chunker.py` then `embed.py`.
+>
+> The manual steps below are the alternative if you'd rather run the pieces directly.
+
 ### 1. Start the model
 ```bash
 ollama serve
@@ -120,7 +128,7 @@ ollama serve
 ### 2. Start the RAG server
 ```bash
 cd scraping
-pip install -r requirements.txt      # lighter test-only deps: requirements-test.txt
+pip install -r requirements.txt      # server only: requirements-server.txt · CI/test: requirements-test.txt
 cd rag
 uvicorn server:app --host 0.0.0.0 --port 8000
 ```
