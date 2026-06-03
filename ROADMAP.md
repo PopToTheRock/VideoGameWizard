@@ -67,8 +67,11 @@ Legend: ✅ done · 🚧 in progress · ⬜ not started
 ## Milestone 4 — ML depth: evaluation + QLoRA fine-tuning *(the headline)*
 *Goal: prove you can measure and improve a model, not just wire one up.*
 
-- ⬜ **RAG evaluation harness**: Q&A eval set; retrieval hit-rate / MRR; cross-encoder
-  reranking with before/after metrics; optional RAGAS (faithfulness, answer-relevancy)
+- ✅ **RAG evaluation harness** (`scraping/rag/eval/`): synthetic, seed-reproducible 150-Q
+  gold set (LLM self-labels each question's source chunk); retrieval metrics (hit-rate@k,
+  MRR, nDCG@k) at both chunk- and article-level; cross-encoder reranking with before/after
+  numbers (article-level hit@1 0.60→0.75, MRR 0.69→0.79). Pure metric fns unit-tested. See
+  `eval/README.md`. Deferred: generation metrics (RAGAS faithfulness/answer-relevancy).
 - ⬜ **Fine-tuning data prep**: `chunks.jsonl` → instruction/response pairs in Llama-3 chat
   format; train/val split
 - ⬜ **QLoRA training**: Unsloth + `SFTTrainer` in WSL2 (bf16 on RTX 5070 Ti); capture loss curve

@@ -267,6 +267,25 @@ cd scraping/rag
 uvicorn server:app --host 0.0.0.0 --port 8000
 ```
 
+### Evaluation Harness (`eval/`)
+- Measures **retrieval quality** and the lift from **cross-encoder reranking** on a
+  synthetic, seed-reproducible gold set. Fully local (Ollama only authors the eval set).
+- `generate_eval_set.py` — reservoir-samples chunks (fixed seed) and has `llama3.1:8b`
+  write one question per chunk; the source chunk *is* the gold label (`data/eval_set.jsonl`,
+  committed as the benchmark). `retriever.py` mirrors the server's embed+cosine-collection
+  contract offline; `rerank.py` wraps `cross-encoder/ms-marco-MiniLM-L-6-v2`; `metrics.py`
+  holds pure hit-rate@k / MRR / nDCG@k fns (unit-tested in `tests/test_eval_metrics.py`).
+- `run_eval.py` reports baseline vs. reranked at **chunk-level** (exact source chunk) and
+  **article-level** (any chunk from the source article). Run with the **full ML env** (base
+  `py`), not the `.venv` (which is the lint/test env). Results table + methodology:
+  `eval/README.md`. Timestamped `results/*.json` are gitignored.
+
+```bash
+cd scraping/rag
+py -m eval.generate_eval_set --n 150 --seed 42   # needs Ollama
+py -m eval.run_eval                               # baseline vs reranked
+```
+
 ---
 
 ## Build Order

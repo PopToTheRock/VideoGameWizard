@@ -12,6 +12,10 @@ local.properties
 
 # Scraped data
 scraping/data/
+
+# RAG eval run artifacts (timestamped reports; canonical numbers live in
+# scraping/rag/eval/README.md). The eval_set.jsonl benchmark IS tracked.
+scraping/rag/eval/results/
 scraping/**/__pycache__/
 scraping/**/*.pyc
 scraping/wikis/.scrapy/
