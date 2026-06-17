@@ -85,6 +85,24 @@ Legend: ✅ done · 🚧 in progress · ⬜ not started
   (`compare_models.py` → `comparison.md`) — fine-tune is measurably more concise + grounded,
   with honest limitations documented. Deferred: generation-metric (RAGAS) delta.
 
+## Feature enhancements (post-M4)
+*Goal: surface the system's depth in the UX and close the ML loop. Each touches all
+three layers (Android · backend · ML/RAG).*
+
+- ✅ **Streaming responses** — token-by-token generation end to end. `POST /chat/stream`
+  proxies Ollama's stream as NDJSON (`sources` → `token…` → `done`/`error`); the Android
+  client reads it via Retrofit `@Streaming` into a `Flow<ChatStreamEvent>`, grows a transient
+  partial bubble, and persists to Room once on completion (no per-token writes). Includes a
+  **Stop** button that cancels mid-stream and keeps the partial. The buffered `/chat` is kept
+  for scripts/eval/tests; shared retrieval/prompt helpers keep the two endpoints DRY.
+- ⬜ **Source citations** — render the `sources` already carried in the stream as tappable
+  chips under each answer (grounded / anti-hallucination story). Server-side data is done.
+- ✅ **👍/👎 feedback → preference dataset** — thumbs under each AI reply; `POST /feedback`
+  appends `{timestamp, rating, model, query, answer, sources}` to `data/feedback.jsonl`. The
+  tap is optimistic (reverts on network failure); the prompt logged is the preceding user
+  turn. Signals full-ML-lifecycle thinking (DPO-ready). Context/sources enrichment rides
+  along with #2.
+
 ## Milestone 5 — Presentation & polish
 *Goal: make it effortless to be impressed.*
 

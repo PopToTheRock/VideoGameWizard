@@ -16,15 +16,20 @@ sensible local-dev default and can be overridden with a ``VGW_`` env var, e.g.
     VGW_OLLAMA_MODEL=llama3.1:70b uvicorn server:app ...
 
 Endpoints:
-    GET  /health  — liveness + chunk count
-    GET  /stats   — model / collection / config info
-    POST /chat    — main chat endpoint
+    GET  /health       — liveness + chunk count
+    GET  /stats        — model / collection / config info
+    POST /chat         — buffered chat (full answer in one response)
+    POST /chat/stream  — streaming chat (NDJSON: sources, token…, done/error)
+    POST /feedback     — record a thumbs up/down on an answer (JSONL preference log)
 """
 
 from __future__ import annotations
 
+import json
 import logging
+from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Literal
 
@@ -32,6 +37,7 @@ import httpx
 from fastapi import APIRouter, Depends, FastAPI, HTTPException, Request
 from fastapi.concurrency import run_in_threadpool
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -45,7 +51,9 @@ log = logging.getLogger(__name__)
 # Keep in sync with the Android client's MAX_INPUT_LENGTH.
 MAX_MESSAGE_CHARS = 4096
 
-_DEFAULT_CHROMA_PATH = Path(__file__).resolve().parent.parent / "data" / "chromadb"
+_DEFAULT_DATA_DIR = Path(__file__).resolve().parent.parent / "data"
+_DEFAULT_CHROMA_PATH = _DEFAULT_DATA_DIR / "chromadb"
+_DEFAULT_FEEDBACK_PATH = _DEFAULT_DATA_DIR / "feedback.jsonl"
 
 
 # ---------------------------------------------------------------------------
@@ -65,6 +73,7 @@ class Settings(BaseSettings):
     chroma_path: str = str(_DEFAULT_CHROMA_PATH)
     top_k: int = 5
     request_timeout_seconds: float = 120.0
+    feedback_path: str = str(_DEFAULT_FEEDBACK_PATH)
     # Browser origins allowed by CORS. The Android client is a native HTTP
     # client and is unaffected by CORS — this only matters for browser callers
     # (e.g. the Swagger docs or a future web UI). Override for other hosts via
@@ -105,6 +114,22 @@ class ChatResponse(BaseModel):
     sources: list[str] = Field(default_factory=list)
 
 
+class FeedbackRequest(BaseModel):
+    """A user's thumbs up/down on one answer — a preference signal for later DPO."""
+
+    query: str = Field(min_length=1, max_length=MAX_MESSAGE_CHARS)
+    answer: str = Field(min_length=1)
+    rating: Literal["up", "down"]
+    sources: list[str] = Field(default_factory=list)
+
+    @field_validator("query", "answer")
+    @classmethod
+    def _reject_blank(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("must not be blank")
+        return value
+
+
 # ---------------------------------------------------------------------------
 # Dependencies (resources live on app.state; tests override these)
 # ---------------------------------------------------------------------------
@@ -124,6 +149,64 @@ def get_embedder(request: Request) -> Any:
 
 def get_http_client(request: Request) -> httpx.AsyncClient:
     return request.app.state.http_client
+
+
+# ---------------------------------------------------------------------------
+# Shared RAG pipeline (used by both the buffered and streaming chat endpoints)
+# ---------------------------------------------------------------------------
+
+
+async def retrieve_context(
+    query: str,
+    settings: Settings,
+    embedder: Any,
+    collection: Any,
+) -> tuple[list[str], list[str]]:
+    """Embed the query, retrieve the top-k chunks, and return (documents, sources).
+
+    Both the embedding and the ChromaDB query are blocking, so each is offloaded
+    to a threadpool to keep the event loop free.
+    """
+    embedding = (await run_in_threadpool(embedder.encode, [query], normalize_embeddings=True))[0]
+    query_vec = embedding.tolist() if hasattr(embedding, "tolist") else list(embedding)
+
+    results = await run_in_threadpool(
+        collection.query,
+        query_embeddings=[query_vec],
+        n_results=settings.top_k,
+        include=["documents", "metadatas"],
+    )
+    documents: list[str] = (results.get("documents") or [[]])[0]
+    metadatas: list[dict[str, Any]] = (results.get("metadatas") or [[]])[0]
+    sources = sorted({m.get("title", "") for m in metadatas if m.get("title")})
+    return documents, sources
+
+
+def build_messages(
+    query: str,
+    documents: list[str],
+    history: list[HistoryMessage],
+) -> list[dict[str, str]]:
+    """Assemble the Ollama message list, grounding the system prompt in context."""
+    if documents:
+        context_text = "\n\n---\n\n".join(documents)
+        system_prompt = (
+            "You are VideoGameWizard, an expert AI assistant for video games. "
+            "Use the context below to answer the user's question accurately and "
+            "concisely. If the context does not contain relevant information, use "
+            f"your general knowledge.\n\nContext:\n{context_text}"
+        )
+    else:
+        system_prompt = (
+            "You are VideoGameWizard, an expert AI assistant for video games. "
+            "Answer the user's question accurately and concisely using your "
+            "general knowledge."
+        )
+
+    messages: list[dict[str, str]] = [{"role": "system", "content": system_prompt}]
+    messages += [{"role": m.role, "content": m.content} for m in history]
+    messages.append({"role": "user", "content": query})
+    return messages
 
 
 # ---------------------------------------------------------------------------
@@ -160,48 +243,16 @@ async def chat(
     collection: Any = Depends(get_collection),
     http_client: httpx.AsyncClient = Depends(get_http_client),
 ) -> ChatResponse:
+    """Buffered chat: retrieve context, call Ollama once, return the full answer.
+
+    Retained for non-streaming callers (eval scripts, curl, tests). Interactive
+    clients should prefer ``/chat/stream`` for token-by-token delivery.
+    """
     query = payload.message
+    documents, sources = await retrieve_context(query, settings, embedder, collection)
+    messages = build_messages(query, documents, payload.history)
 
-    # 1. Embed the query. encode() is CPU/GPU-bound and blocking, so run it in a
-    #    threadpool to keep the event loop free. (tolist() for numpy arrays;
-    #    list() for plain sequences.)
-    embedding = (await run_in_threadpool(embedder.encode, [query], normalize_embeddings=True))[0]
-    query_vec = embedding.tolist() if hasattr(embedding, "tolist") else list(embedding)
-
-    # 2. Retrieve the top-k relevant chunks. ChromaDB's query is also blocking,
-    #    so offload it as well rather than stalling the event loop.
-    results = await run_in_threadpool(
-        collection.query,
-        query_embeddings=[query_vec],
-        n_results=settings.top_k,
-        include=["documents", "metadatas"],
-    )
-    documents: list[str] = (results.get("documents") or [[]])[0]
-    metadatas: list[dict[str, Any]] = (results.get("metadatas") or [[]])[0]
-    sources = sorted({m.get("title", "") for m in metadatas if m.get("title")})
-
-    # 3. Build the system prompt, gracefully handling zero retrieval.
-    if documents:
-        context_text = "\n\n---\n\n".join(documents)
-        system_prompt = (
-            "You are VideoGameWizard, an expert AI assistant for video games. "
-            "Use the context below to answer the user's question accurately and "
-            "concisely. If the context does not contain relevant information, use "
-            f"your general knowledge.\n\nContext:\n{context_text}"
-        )
-    else:
-        system_prompt = (
-            "You are VideoGameWizard, an expert AI assistant for video games. "
-            "Answer the user's question accurately and concisely using your "
-            "general knowledge."
-        )
-
-    # 4. Assemble the message list for Ollama.
-    messages: list[dict[str, str]] = [{"role": "system", "content": system_prompt}]
-    messages += [{"role": m.role, "content": m.content} for m in payload.history]
-    messages.append({"role": "user", "content": query})
-
-    # 5. Call Ollama asynchronously (timeout is configured on the client).
+    # Call Ollama asynchronously (timeout is configured on the client).
     try:
         resp = await http_client.post(
             f"{settings.ollama_url}/api/chat",
@@ -220,6 +271,103 @@ async def chat(
 
     log.info("Query: %r | sources: %s", query[:60], sources)
     return ChatResponse(response=ai_text, sources=sources)
+
+
+def _ndjson(event: dict[str, Any]) -> str:
+    """Serialise one stream event as a single newline-terminated JSON line."""
+    return json.dumps(event, ensure_ascii=False) + "\n"
+
+
+@router.post("/chat/stream")
+async def chat_stream(
+    payload: ChatRequest,
+    settings: Settings = Depends(get_settings),
+    embedder: Any = Depends(get_embedder),
+    collection: Any = Depends(get_collection),
+    http_client: httpx.AsyncClient = Depends(get_http_client),
+) -> StreamingResponse:
+    """Streaming chat. Emits newline-delimited JSON (NDJSON) events:
+
+        {"type": "sources",  "sources": [...]}   once, before generation
+        {"type": "token",    "token": "..."}     per token as Ollama emits it
+        {"type": "done"}                          terminal success
+        {"type": "error",    "message": "..."}    terminal failure
+
+    The response status is 200 as soon as headers flush, so any failure during
+    generation is reported in-band as an ``error`` event rather than an HTTP
+    error code (request *validation* still fails fast with 422 before streaming).
+    """
+    query = payload.message
+
+    async def event_stream() -> AsyncIterator[str]:
+        # Retrieval happens before the first token, so sources lead the stream.
+        try:
+            documents, sources = await retrieve_context(query, settings, embedder, collection)
+        except Exception as exc:  # noqa: BLE001 — surfaced in-band, not as a 500
+            log.error("Retrieval failed: %s", exc)
+            yield _ndjson({"type": "error", "message": "Retrieval failed"})
+            return
+
+        yield _ndjson({"type": "sources", "sources": sources})
+        messages = build_messages(query, documents, payload.history)
+
+        try:
+            async with http_client.stream(
+                "POST",
+                f"{settings.ollama_url}/api/chat",
+                json={"model": settings.ollama_model, "messages": messages, "stream": True},
+            ) as resp:
+                resp.raise_for_status()
+                async for line in resp.aiter_lines():
+                    if not line.strip():
+                        continue
+                    chunk = json.loads(line)
+                    token = chunk.get("message", {}).get("content", "")
+                    if token:
+                        yield _ndjson({"type": "token", "token": token})
+                    if chunk.get("done"):
+                        break
+        except httpx.HTTPError as exc:
+            log.error("Ollama stream failed: %s", exc)
+            yield _ndjson({"type": "error", "message": f"Ollama request failed: {exc}"})
+            return
+
+        log.info("Streamed query: %r | sources: %s", query[:60], sources)
+        yield _ndjson({"type": "done"})
+
+    return StreamingResponse(event_stream(), media_type="application/x-ndjson")
+
+
+def _append_jsonl(path: str, record: dict[str, Any]) -> None:
+    """Append one record as a JSON line, creating the parent dir if needed."""
+    file = Path(path)
+    file.parent.mkdir(parents=True, exist_ok=True)
+    with file.open("a", encoding="utf-8") as fh:
+        fh.write(json.dumps(record, ensure_ascii=False) + "\n")
+
+
+@router.post("/feedback")
+async def feedback(
+    payload: FeedbackRequest,
+    settings: Settings = Depends(get_settings),
+) -> dict[str, str]:
+    """Record a thumbs up/down on an answer to a JSONL log.
+
+    Each line is a self-contained ``(query, answer, rating)`` record (plus model
+    and timestamp) — a preference dataset that can later seed DPO / RLHF or simple
+    quality analysis. The blocking file append is offloaded to a threadpool.
+    """
+    record = {
+        "timestamp": datetime.now(UTC).isoformat(),
+        "rating": payload.rating,
+        "model": settings.ollama_model,
+        "query": payload.query,
+        "answer": payload.answer,
+        "sources": payload.sources,
+    }
+    await run_in_threadpool(_append_jsonl, settings.feedback_path, record)
+    log.info("Feedback %r recorded for query %r", payload.rating, payload.query[:60])
+    return {"status": "recorded"}
 
 
 # ---------------------------------------------------------------------------

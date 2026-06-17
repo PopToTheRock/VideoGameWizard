@@ -3,15 +3,16 @@ package dev.alexn.videogamewizard.data.repository
 import dev.alexn.videogamewizard.data.model.ChatAuthor
 import dev.alexn.videogamewizard.data.model.ChatMessage
 import dev.alexn.videogamewizard.data.network.ChatRequest
-import dev.alexn.videogamewizard.data.network.ChatResponse
 import dev.alexn.videogamewizard.data.network.RagApi
 import io.mockk.coEvery
 import io.mockk.mockk
 import io.mockk.slot
-import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.test.runTest
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.ResponseBody
+import okhttp3.ResponseBody.Companion.toResponseBody
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.IOException
@@ -20,28 +21,39 @@ class ChatRepositoryTest {
     private val api: RagApi = mockk()
     private val repository = ChatRepository(api)
 
+    /** Builds an NDJSON [ResponseBody] from raw event lines, as the server sends. */
+    private fun ndjsonBody(vararg lines: String): ResponseBody = lines.joinToString(separator = "\n", postfix = "\n")
+        .toResponseBody("application/x-ndjson".toMediaType())
+
     @Test
-    fun `successful call returns the response wrapped in Result-success`() = runTest {
-        coEvery { api.chat(any()) } returns ChatResponse(response = "answer", sources = listOf("Zelda"))
+    fun `stream yields sources then tokens and completes on done`() = runTest {
+        coEvery { api.chatStream(any()) } returns ndjsonBody(
+            """{"type":"sources","sources":["Mario","Zelda"]}""",
+            """{"type":"token","token":"Use "}""",
+            """{"type":"token","token":"bombs."}""",
+            """{"type":"done"}""",
+        )
 
-        val result = repository.sendMessage("question", emptyList())
+        val events = repository.streamMessage("question", emptyList()).toList()
 
-        assertTrue(result.isSuccess)
-        assertEquals("answer", result.getOrNull()?.response)
-        assertEquals(listOf("Zelda"), result.getOrNull()?.sources)
+        assertEquals(ChatStreamEvent.Sources(listOf("Mario", "Zelda")), events.first())
+        val text = events.filterIsInstance<ChatStreamEvent.Token>().joinToString("") { it.text }
+        assertEquals("Use bombs.", text)
+        // `done` completes the flow rather than emitting a terminal event.
+        assertTrue(events.none { it !is ChatStreamEvent.Sources && it !is ChatStreamEvent.Token })
     }
 
     @Test
     fun `chat messages are mapped to the request with correct roles`() = runTest {
         val requestSlot = slot<ChatRequest>()
-        coEvery { api.chat(capture(requestSlot)) } returns ChatResponse(response = "ok")
+        coEvery { api.chatStream(capture(requestSlot)) } returns ndjsonBody("""{"type":"done"}""")
 
         val history =
             listOf(
                 ChatMessage(id = 1, author = ChatAuthor.AI, text = "greeting"),
                 ChatMessage(id = 2, author = ChatAuthor.USER, text = "earlier question"),
             )
-        repository.sendMessage("current question", history)
+        repository.streamMessage("current question", history).toList()
 
         val request = requestSlot.captured
         assertEquals("current question", request.message)
@@ -53,37 +65,60 @@ class ChatRepositoryTest {
     }
 
     @Test
-    fun `network exception is captured as Result-failure`() = runTest {
-        coEvery { api.chat(any()) } throws IOException("connection reset")
+    fun `an in-band error event is thrown to the collector`() = runTest {
+        coEvery { api.chatStream(any()) } returns ndjsonBody(
+            """{"type":"sources","sources":[]}""",
+            """{"type":"error","message":"Ollama request failed"}""",
+        )
 
-        val result = repository.sendMessage("question", emptyList())
+        val error = runCatching { repository.streamMessage("q", emptyList()).toList() }
+            .exceptionOrNull()
+        assertTrue(error is IOException)
+        assertEquals("Ollama request failed", error?.message)
+    }
+
+    @Test
+    fun `a network exception propagates from the flow`() = runTest {
+        coEvery { api.chatStream(any()) } throws IOException("connection reset")
+
+        val error = runCatching { repository.streamMessage("q", emptyList()).toList() }
+            .exceptionOrNull()
+        assertTrue(error is IOException)
+    }
+
+    @Test
+    fun `sendFeedback posts the rating and returns success`() = runTest {
+        val requestSlot = slot<dev.alexn.videogamewizard.data.network.FeedbackRequest>()
+        coEvery { api.sendFeedback(capture(requestSlot)) } returns
+            dev.alexn.videogamewizard.data.network.FeedbackResponse(status = "recorded")
+
+        val result = repository.sendFeedback("how do I win?", "use bombs", "up", listOf("Zelda"))
+
+        assertTrue(result.isSuccess)
+        val request = requestSlot.captured
+        assertEquals("how do I win?", request.query)
+        assertEquals("use bombs", request.answer)
+        assertEquals("up", request.rating)
+        assertEquals(listOf("Zelda"), request.sources)
+    }
+
+    @Test
+    fun `sendFeedback captures a network failure as Result-failure`() = runTest {
+        coEvery { api.sendFeedback(any()) } throws IOException("offline")
+
+        val result = repository.sendFeedback("q", "a", "down")
 
         assertTrue(result.isFailure)
         assertTrue(result.exceptionOrNull() is IOException)
     }
 
     @Test
-    fun `cancellation is rethrown, never swallowed into a Result`() = runTest {
-        coEvery { api.chat(any()) } throws CancellationException("scope cancelled")
-
-        var rethrown = false
-        try {
-            repository.sendMessage("question", emptyList())
-        } catch (e: CancellationException) {
-            rethrown = true
-        }
-
-        // If cancellation had been wrapped in Result.failure, nothing would throw.
-        assertTrue(rethrown)
-    }
-
-    @Test
     fun `empty history produces an empty request history`() = runTest {
         val requestSlot = slot<ChatRequest>()
-        coEvery { api.chat(capture(requestSlot)) } returns ChatResponse(response = "ok")
+        coEvery { api.chatStream(capture(requestSlot)) } returns ndjsonBody("""{"type":"done"}""")
 
-        repository.sendMessage("solo question", emptyList())
+        repository.streamMessage("solo question", emptyList()).toList()
 
-        assertFalse(requestSlot.captured.history.isNotEmpty())
+        assertTrue(requestSlot.captured.history.isEmpty())
     }
 }

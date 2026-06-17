@@ -86,9 +86,10 @@ User types message
         ↓
 HomeViewModel.sendMessage()
         ↓
-ChatRepository.sendMessage(message, history)
+ChatRepository.streamMessage(message, history) → Flow<ChatStreamEvent>
         ↓
-RagApi.chat() via Retrofit (POST http://10.0.2.2:8000/chat)
+RagApi.chatStream() via Retrofit @Streaming (POST http://10.0.2.2:8000/chat/stream)
+  └── reads the NDJSON body line-by-line on Dispatchers.IO, emitting Sources/Token events
         ↓
 RAG Server (FastAPI, port 8000)
   ├── Embeds query (sentence-transformers)
@@ -96,9 +97,11 @@ RAG Server (FastAPI, port 8000)
   ├── Builds system prompt with context
   └── Calls Ollama POST /api/chat
         ↓
-Ollama (llama3.1:8b, port 11434)
+Ollama (llama3.1:8b, port 11434)  ← called with stream=True; tokens proxied as they arrive
         ↓
-Response flows back to HomeViewModel → UI
+Tokens stream back to HomeViewModel → grow a transient partial bubble → persisted to
+Room once on completion (zero per-token DB writes). A Stop button cancels mid-stream,
+keeping the partial (persisted under NonCancellable).
 ```
 
 ### Key Dependencies
@@ -257,6 +260,17 @@ cd scraping/rag && py embed.py
   by **dependency injection** — which is what makes the endpoints unit-testable.
 - `POST /chat` — `{message, history}` → top-k chunks → Ollama. Validates input (non-blank,
   ≤4096 chars; history roles must be `user`/`assistant`); returns 502 on Ollama failure.
+  Buffered (full answer in one response); retained for scripts/eval/tests.
+- `POST /chat/stream` — same contract, streamed as **NDJSON** (`application/x-ndjson`):
+  one `{"type":"sources",...}` line, then `{"type":"token",...}` per token, then
+  `{"type":"done"}` (or `{"type":"error","message":...}` if generation fails mid-stream —
+  the 200 headers have already flushed, so failures are reported in-band). Request
+  *validation* still fails fast with 422. Retrieval + prompt-building are shared with `/chat`
+  via `retrieve_context()` / `build_messages()`. This is the path the Android app uses.
+- `POST /feedback` — records a thumbs `up`/`down` on an answer to `data/feedback.jsonl`
+  (one `{timestamp, rating, model, query, answer, sources}` line per tap). A preference
+  dataset for later DPO/RLHF or quality analysis; the blocking append is offloaded to a
+  threadpool. `data/` is gitignored, so the log stays local.
 - `GET /health` — chunk count · `GET /stats` — model/collection/config · `/docs` — OpenAPI UI
 - Heavy imports (chromadb, sentence-transformers) are deferred to `lifespan` so the module
   imports without the ML stack — tests run on just `requirements-test.txt`.
