@@ -64,6 +64,10 @@ def main() -> None:
     # ---------------------------------------------------------- embedding model
     log.info(f"Loading model: {EMBED_MODEL}")
     model = SentenceTransformer(EMBED_MODEL, device=device)
+    # Pin the sequence length explicitly rather than relying on the model default.
+    # Tokens beyond this are truncated at embed time (the chunk tail then never
+    # contributes to its vector), so the chunker caps chunk size to stay under it.
+    model.max_seq_length = config.EMBED_MAX_TOKENS
 
     # ------------------------------------------------------------------ chunks
     log.info(f"Loading and deduplicating chunks from {chunks_path}...")
@@ -95,6 +99,34 @@ def main() -> None:
     # ------------------------------------------------------ phase 1: embed all
     log.info(f"Embedding {len(chunks):,} chunks (batch_size={EMBED_BATCH_SIZE})...")
     texts = [c["content"] for c in chunks]
+
+    # Audit token lengths so any residual truncation is visible, not silent. A
+    # chunk over EMBED_MAX_TOKENS still serves its full text as context but only
+    # its first EMBED_MAX_TOKENS tokens shape its embedding (and thus retrieval).
+    tok_lens = np.array(
+        [len(ids) for ids in model.tokenizer(texts, add_special_tokens=True)["input_ids"]]
+    )
+    over = int((tok_lens > config.EMBED_MAX_TOKENS).sum())
+    p50, p95, p99, p100 = np.percentile(tok_lens, [50, 95, 99, 100])
+    log.info(
+        "Token lengths — median %.0f, p95 %.0f, p99 %.0f, max %.0f",
+        p50,
+        p95,
+        p99,
+        p100,
+    )
+    if over:
+        log.warning(
+            "%d/%d chunks (%.2f%%) exceed the %d-token limit and will be truncated — "
+            "lower MAX_CHUNK_CHARS or use a longer-context embedding model.",
+            over,
+            len(texts),
+            100 * over / len(texts),
+            config.EMBED_MAX_TOKENS,
+        )
+    else:
+        log.info("All chunks fit within the %d-token embedding limit.", config.EMBED_MAX_TOKENS)
+
     t0 = time.time()
     embeddings: np.ndarray = model.encode(
         texts,

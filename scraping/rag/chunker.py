@@ -65,13 +65,39 @@ def split_long_paragraph(para: str, max_chars: int) -> list[str]:
     return pieces
 
 
+_SEP = "\n\n"
+
+
+def _tail_overlap(text: str, overlap_chars: int) -> str:
+    """Return up to ``overlap_chars`` trailing characters of ``text``.
+
+    Snapped to a word boundary so the overlap never begins mid-word. This is a
+    character *budget*: unlike re-using whole paragraphs (the previous approach),
+    it can never push the next chunk over the size limit.
+    """
+    if overlap_chars <= 0 or not text:
+        return ""
+    if len(text) <= overlap_chars:
+        return text.strip()
+    tail = text[-overlap_chars:]
+    # Drop a leading partial word (everything up to and including the first space).
+    space = tail.find(" ")
+    if space != -1:
+        tail = tail[space + 1 :]
+    return tail.strip()
+
+
 def chunk_article(text: str, max_chars: int, overlap_chars: int) -> list[str]:
+    """Split article text into overlapping chunks aligned to paragraph boundaries.
+
+    **Every returned chunk is guaranteed to be at most ``max_chars`` characters.**
+    The overlap is carried as a trailing-character budget rather than whole
+    paragraphs, so it can never push a chunk past the limit (the previous version
+    re-inserted whole paragraphs and routinely produced ~2x-oversize chunks).
     """
-    Split article text into overlapping chunks aligned to paragraph boundaries.
-    Returns a list of chunk strings.
-    """
-    # Split into paragraphs, discarding blank lines
-    raw_paragraphs = [p.strip() for p in text.split("\n\n")]
+    # Split into paragraphs; hard-split any paragraph that alone exceeds max_chars
+    # so the accumulation loop only ever sees pieces that can fit.
+    raw_paragraphs = [p.strip() for p in text.split(_SEP)]
     paragraphs: list[str] = []
     for para in raw_paragraphs:
         if not para:
@@ -82,34 +108,24 @@ def chunk_article(text: str, max_chars: int, overlap_chars: int) -> list[str]:
             paragraphs.append(para)
 
     chunks: list[str] = []
-    current_parts: list[str] = []
-    current_len = 0
+    buf = ""
 
     for para in paragraphs:
-        para_len = len(para)
+        candidate = para if not buf else buf + _SEP + para
+        if len(candidate) <= max_chars:
+            buf = candidate
+            continue
 
-        if current_len + para_len > max_chars and current_parts:
-            # Emit current chunk
-            chunks.append("\n\n".join(current_parts))
+        # `para` doesn't fit: emit the current chunk, then start a new one seeded
+        # with a trailing overlap of the emitted text — but only when there is room
+        # (drop the overlap rather than exceed max_chars).
+        chunks.append(buf)
+        overlap = _tail_overlap(buf, overlap_chars)
+        seeded = overlap + _SEP + para if overlap else para
+        buf = seeded if len(seeded) <= max_chars else para
 
-            # Build overlap: walk back through parts until we have overlap_chars
-            overlap_parts: list[str] = []
-            overlap_len = 0
-            for part in reversed(current_parts):
-                if overlap_len >= overlap_chars:
-                    break
-                overlap_parts.insert(0, part)
-                overlap_len += len(part)
-
-            current_parts = overlap_parts
-            current_len = overlap_len
-
-        current_parts.append(para)
-        current_len += para_len
-
-    # Emit any remaining content
-    if current_parts:
-        chunks.append("\n\n".join(current_parts))
+    if buf:
+        chunks.append(buf)
 
     return chunks
 
@@ -132,6 +148,7 @@ def main() -> None:
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
     total_articles = total_chunks = skipped_chunks = 0
+    max_chunk_len = 0
 
     with (
         open(input_path, encoding="utf-8") as in_f,
@@ -152,6 +169,14 @@ def main() -> None:
             )
 
             for i, chunk_text in enumerate(chunks):
+                # Invariant: chunk_article must never exceed the configured cap
+                # (this is what keeps chunks under the embedder's token limit).
+                assert len(chunk_text) <= config.MAX_CHUNK_CHARS, (
+                    f"chunk {i} of {article['title']!r} is {len(chunk_text)} chars "
+                    f"(> {config.MAX_CHUNK_CHARS})"
+                )
+                max_chunk_len = max(max_chunk_len, len(chunk_text))
+
                 if len(chunk_text) < config.MIN_CHUNK_CHARS:
                     skipped_chunks += 1
                     continue
@@ -184,6 +209,7 @@ def main() -> None:
         avg,
         skipped_chunks,
     )
+    log.info("Max chunk: %d chars (cap %d)", max_chunk_len, config.MAX_CHUNK_CHARS)
     log.info("Output: %s", output_path.resolve())
 
 

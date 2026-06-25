@@ -72,42 +72,51 @@ py -m eval.run_eval --no-rerank      # baseline only
 
 150 synthetic questions · top-20 candidates · seed 42 · embeddings
 `all-MiniLM-L6-v2` · reranker `cross-encoder/ms-marco-MiniLM-L-6-v2`
-(recorded 2026-06-03).
+(recorded 2026-06-25, over the **191,193-chunk** corpus — chunks capped at 850
+chars so all but 0.09% fit the embedder's 256-token window; see `embed.py`'s
+token audit).
 
 **Article-level** (any chunk from the source article — the metric that tracks
 grounding quality):
 
 | metric | baseline | +rerank | Δ |
 |--------|---------:|--------:|----:|
-| hit-rate@1 | 0.600 | **0.753** | +0.153 |
-| hit-rate@3 | 0.787 | 0.820 | +0.033 |
-| hit-rate@5 | 0.813 | 0.827 | +0.013 |
-| hit-rate@10 | 0.827 | 0.847 | +0.020 |
-| nDCG@10 | 0.724 | 0.803 | +0.079 |
-| **MRR** | 0.693 | **0.790** | +0.097 |
+| hit-rate@1 | 0.533 | **0.680** | +0.147 |
+| hit-rate@3 | 0.673 | 0.767 | +0.093 |
+| hit-rate@5 | 0.713 | 0.793 | +0.080 |
+| hit-rate@10 | 0.793 | 0.800 | +0.007 |
+| nDCG@10 | 0.660 | 0.745 | +0.086 |
+| **MRR** | 0.619 | **0.728** | +0.109 |
 
 **Chunk-level** (exact source chunk — strict):
 
 | metric | baseline | +rerank | Δ |
 |--------|---------:|--------:|----:|
-| hit-rate@1 | 0.240 | **0.327** | +0.087 |
-| hit-rate@5 | 0.573 | 0.627 | +0.053 |
-| hit-rate@10 | 0.600 | 0.647 | +0.047 |
-| nDCG@10 | 0.428 | 0.502 | +0.074 |
-| **MRR** | 0.375 | **0.454** | +0.079 |
+| hit-rate@1 | 0.293 | **0.473** | +0.180 |
+| hit-rate@5 | 0.493 | 0.613 | +0.120 |
+| hit-rate@10 | 0.573 | 0.613 | +0.040 |
+| nDCG@10 | 0.425 | 0.553 | +0.127 |
+| **MRR** | 0.383 | **0.532** | +0.150 |
 
 **Takeaways**
 
-- Reranking improves **every** metric at both granularities. The largest win is
-  **hit-rate@1**: the right article is surfaced at the very top **60% → 75%** of
-  the time (+26% relative), and MRR climbs +0.10.
-- hit-rate@10 barely moves (+0.01–0.02) — as expected, since reranking only
-  reorders the already-retrieved shortlist. The gain is concentrated where it
-  matters for a top-k prompt: pushing the right context toward rank 1.
-- The chunk-vs-article gap shows first-stage retrieval reliably finds the right
-  *topic* (article hit@5 ≈ 0.81) but is noisier at pinpointing the exact source
-  chunk — motivating the reranker, and a useful baseline for the upcoming
-  fine-tuning work.
+- Reranking improves **every** metric at both granularities. The largest wins are
+  at **hit-rate@1** — chunk-level **0.29 → 0.47 (+61% relative)**, article-level
+  **0.53 → 0.68 (+28%)** — and MRR (+0.11–0.15). The retrieve-shortlist-then-rerank
+  pattern pays off exactly where it should: pushing the right context to rank 1.
+- hit-rate@10 barely moves (+0.01–0.04) — as expected, since reranking only
+  reorders the already-retrieved shortlist.
+- **On the corrected corpus vs. the earlier 1000-char run:** chunk-level (exact
+  source) *improved* (baseline hit@1 0.24 → 0.29, reranked 0.33 → 0.47) — smaller,
+  fully-embedded chunks are easier to pinpoint now that chunk tails are no longer
+  silently truncated. Article-level dipped slightly (baseline 0.60 → 0.53): the old
+  oversized chunks carried heavy paragraph overlap, so an article's chunks were
+  near-duplicates that *inflated* "any chunk from the article" hits. The leaner
+  corpus has less redundancy — a lower but more honest number. (This is a freshly
+  regenerated gold set, so treat it as a new benchmark, not a like-for-like delta.)
+- The chunk-vs-article gap still shows first-stage retrieval finds the right
+  *topic* more reliably than the exact source chunk — the motivation for the
+  reranker, and a baseline for the fine-tuning work.
 
 ## Files
 
