@@ -1,5 +1,7 @@
 package dev.alexn.videogamewizard.ui.screens
 
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -41,6 +43,7 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -70,6 +73,21 @@ fun HomeScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
+
+    // Open a cited source's Wikipedia article (the corpus is English Wikipedia),
+    // satisfying the CC BY-SA attribution link-back. No-op if no browser handles it.
+    val onSourceClick: (String) -> Unit = remember(context) {
+        { title ->
+            val url = "https://en.wikipedia.org/wiki/" + Uri.encode(title.replace(' ', '_'))
+            runCatching {
+                context.startActivity(
+                    Intent(Intent.ACTION_VIEW, Uri.parse(url))
+                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+                )
+            }
+        }
+    }
 
     // Index of the newest item to scroll to: the trailing typing/streaming item
     // when present, otherwise the last message.
@@ -177,7 +195,7 @@ fun HomeScreen(
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     itemsIndexed(items = uiState.messages, key = { _, m -> m.id }) { index, msg ->
-                        ChatBubble(message = msg)
+                        ChatBubble(message = msg, onSourceClick = onSourceClick)
                         // Offer feedback on AI replies only — i.e. an AI message
                         // with a user turn before it (skips the greeting/cleared).
                         val isReply = msg.author == ChatAuthor.AI &&
@@ -199,7 +217,9 @@ fun HomeScreen(
                                     id = STREAMING_MESSAGE_ID,
                                     author = ChatAuthor.AI,
                                     text = partial,
+                                    sources = uiState.streamingSources,
                                 ),
+                                onSourceClick = onSourceClick,
                             )
                         }
                     }

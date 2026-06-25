@@ -3,6 +3,7 @@ package dev.alexn.videogamewizard.di
 import android.content.Context
 import androidx.room.Room
 import dev.alexn.videogamewizard.data.local.AppDatabase
+import dev.alexn.videogamewizard.data.local.MIGRATION_1_2
 import dev.alexn.videogamewizard.data.repository.ChatHistoryRepository
 import dev.alexn.videogamewizard.data.repository.ChatRepository
 import dev.alexn.videogamewizard.data.repository.RoomChatHistoryRepository
@@ -25,12 +26,11 @@ class DefaultAppContainer(context: Context) : AppContainer {
             AppDatabase::class.java,
             "videogamewizard.db",
         )
-            // Migration strategy: until a schema change actually warrants a
-            // hand-written Migration, drop and recreate. This is a deliberate
-            // trade-off — chat history is local, non-critical, and cheap to
-            // lose, so the simplicity is worth more than preserving old rows.
-            // The exported schemas (see AppDatabase) make swapping in a real
-            // Migration straightforward when that calculus changes.
+            // Real migrations preserve history across schema changes; the
+            // destructive fallback stays only as a backstop for any
+            // unforeseen/older version with no path. Chat history is local and
+            // non-critical, so losing it in that edge case is acceptable.
+            .addMigrations(MIGRATION_1_2)
             .fallbackToDestructiveMigration(dropAllTables = true)
             .build()
     }

@@ -38,8 +38,10 @@ private class FakeChatHistoryRepository : ChatHistoryRepository {
 
     override val messages: Flow<List<ChatMessage>> = state
 
-    override suspend fun append(author: ChatAuthor, text: String) {
-        state.update { it + ChatMessage(id = nextId++, author = author, text = text) }
+    override suspend fun append(author: ChatAuthor, text: String, sources: List<String>) {
+        state.update {
+            it + ChatMessage(id = nextId++, author = author, text = text, sources = sources)
+        }
     }
 
     override suspend fun clear() {
@@ -128,6 +130,33 @@ class HomeViewModelTest {
         advanceUntilIdle()
 
         assertEquals("Use bombs.", vm.uiState.value.messages.last().text)
+    }
+
+    @Test
+    fun `streamed sources are persisted on the reply and sent with feedback`() = runTest(scheduler) {
+        every { chatRepository.streamMessage(any(), any()) } returns
+            flowOf(
+                ChatStreamEvent.Sources(listOf("Zelda", "Hyrule")),
+                ChatStreamEvent.Token("Use bombs."),
+            )
+        val sourcesSlot = slot<List<String>>()
+        coEvery {
+            chatRepository.sendFeedback(any(), any(), any(), capture(sourcesSlot))
+        } returns Result.success(Unit)
+
+        val vm = newViewModel()
+        vm.onInputChange("q")
+        vm.sendMessage()
+        advanceUntilIdle()
+
+        // Sources captured from the stream are persisted on the AI reply...
+        val reply = vm.uiState.value.messages.last()
+        assertEquals(listOf("Zelda", "Hyrule"), reply.sources)
+
+        // ...and carried into the feedback preference record.
+        vm.submitFeedback(reply, "up")
+        advanceUntilIdle()
+        assertEquals(listOf("Zelda", "Hyrule"), sourcesSlot.captured)
     }
 
     @Test
