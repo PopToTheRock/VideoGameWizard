@@ -8,8 +8,13 @@ For each incoming chat message it:
   4. Calls Ollama /api/chat (async) with the conversation history
   5. Returns the answer plus the source article titles
 
-Run from scraping/rag/:
-    uvicorn server:app --host 0.0.0.0 --port 8000
+Run from scraping/rag/ (loopback only — safe default for the emulator workflow):
+    uvicorn server:app --host 127.0.0.1 --port 8000
+
+To reach the server from a physical device on your LAN, bind 0.0.0.0 *and* set a
+shared secret so the inference/feedback routes aren't open to the whole subnet:
+    VGW_API_KEY=$(openssl rand -hex 16) uvicorn server:app --host 0.0.0.0 --port 8000
+(the Android client then sends it as the ``X-API-Key`` header).
 
 Configuration is environment-driven (see ``Settings``); every value has a
 sensible local-dev default and can be overridden with a ``VGW_`` env var, e.g.
@@ -27,6 +32,7 @@ from __future__ import annotations
 
 import json
 import logging
+import secrets
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime
@@ -34,7 +40,7 @@ from pathlib import Path
 from typing import Any, Literal
 
 import httpx
-from fastapi import APIRouter, Depends, FastAPI, HTTPException, Request
+from fastapi import APIRouter, Depends, FastAPI, Header, HTTPException, Request
 from fastapi.concurrency import run_in_threadpool
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
@@ -50,6 +56,9 @@ log = logging.getLogger(__name__)
 
 # Keep in sync with the Android client's MAX_INPUT_LENGTH.
 MAX_MESSAGE_CHARS = 4096
+# Cap conversation history so a long session (or a crafted request) can't blow the
+# model's context window or ship an unbounded payload to Ollama.
+MAX_HISTORY_MESSAGES = 50
 
 _DEFAULT_DATA_DIR = Path(__file__).resolve().parent.parent / "data"
 _DEFAULT_CHROMA_PATH = _DEFAULT_DATA_DIR / "chromadb"
@@ -74,6 +83,11 @@ class Settings(BaseSettings):
     top_k: int = 5
     request_timeout_seconds: float = 120.0
     feedback_path: str = str(_DEFAULT_FEEDBACK_PATH)
+    # Optional shared secret. When non-empty, protected routes (chat / stream /
+    # feedback / stats) require a matching ``X-API-Key`` header. Empty (the
+    # default) disables auth — fine for the local 127.0.0.1 emulator workflow.
+    # Set ``VGW_API_KEY`` whenever the server is bound to a LAN interface (0.0.0.0).
+    api_key: str = ""
     # Browser origins allowed by CORS. The Android client is a native HTTP
     # client and is unaffected by CORS — this only matters for browser callers
     # (e.g. the Swagger docs or a future web UI). Override for other hosts via
@@ -93,12 +107,12 @@ class Settings(BaseSettings):
 
 class HistoryMessage(BaseModel):
     role: Literal["user", "assistant"]
-    content: str = Field(min_length=1)
+    content: str = Field(min_length=1, max_length=MAX_MESSAGE_CHARS)
 
 
 class ChatRequest(BaseModel):
     message: str = Field(min_length=1, max_length=MAX_MESSAGE_CHARS)
-    history: list[HistoryMessage] = Field(default_factory=list)
+    history: list[HistoryMessage] = Field(default_factory=list, max_length=MAX_HISTORY_MESSAGES)
 
     @field_validator("message")
     @classmethod
@@ -149,6 +163,23 @@ def get_embedder(request: Request) -> Any:
 
 def get_http_client(request: Request) -> httpx.AsyncClient:
     return request.app.state.http_client
+
+
+def require_api_key(
+    settings: Settings = Depends(get_settings),
+    x_api_key: str | None = Header(default=None, alias="X-API-Key"),
+) -> None:
+    """Gate protected routes behind ``VGW_API_KEY`` when it is configured.
+
+    No key configured → auth is off (local-dev default). When a key is set, the
+    request must carry a matching ``X-API-Key`` header; the comparison is
+    constant-time to avoid leaking the secret via timing.
+    """
+    expected = settings.api_key
+    if not expected:
+        return
+    if not x_api_key or not secrets.compare_digest(x_api_key, expected):
+        raise HTTPException(status_code=401, detail="Invalid or missing API key")
 
 
 # ---------------------------------------------------------------------------
@@ -221,7 +252,7 @@ def health(collection: Any = Depends(get_collection)) -> dict[str, Any]:
     return {"status": "ok", "chunks": collection.count()}
 
 
-@router.get("/stats")
+@router.get("/stats", dependencies=[Depends(require_api_key)])
 def stats(
     settings: Settings = Depends(get_settings),
     collection: Any = Depends(get_collection),
@@ -235,7 +266,7 @@ def stats(
     }
 
 
-@router.post("/chat", response_model=ChatResponse)
+@router.post("/chat", response_model=ChatResponse, dependencies=[Depends(require_api_key)])
 async def chat(
     payload: ChatRequest,
     settings: Settings = Depends(get_settings),
@@ -278,7 +309,7 @@ def _ndjson(event: dict[str, Any]) -> str:
     return json.dumps(event, ensure_ascii=False) + "\n"
 
 
-@router.post("/chat/stream")
+@router.post("/chat/stream", dependencies=[Depends(require_api_key)])
 async def chat_stream(
     payload: ChatRequest,
     settings: Settings = Depends(get_settings),
@@ -321,7 +352,16 @@ async def chat_stream(
                 async for line in resp.aiter_lines():
                     if not line.strip():
                         continue
-                    chunk = json.loads(line)
+                    try:
+                        chunk = json.loads(line)
+                    except json.JSONDecodeError as exc:
+                        # A non-JSON / truncated upstream line (proxy hiccup, version
+                        # skew) must be reported in-band, not crash the generator.
+                        log.error("Malformed line from Ollama stream: %s", exc)
+                        yield _ndjson(
+                            {"type": "error", "message": "Malformed response from Ollama"}
+                        )
+                        return
                     token = chunk.get("message", {}).get("content", "")
                     if token:
                         yield _ndjson({"type": "token", "token": token})
@@ -346,7 +386,7 @@ def _append_jsonl(path: str, record: dict[str, Any]) -> None:
         fh.write(json.dumps(record, ensure_ascii=False) + "\n")
 
 
-@router.post("/feedback")
+@router.post("/feedback", dependencies=[Depends(require_api_key)])
 async def feedback(
     payload: FeedbackRequest,
     settings: Settings = Depends(get_settings),
