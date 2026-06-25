@@ -48,11 +48,18 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = false
+            // R8: shrink + obfuscate code and strip unused resources. Keep rules
+            // for kotlinx-serialization / Retrofit live in proguard-rules.pro.
+            isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",
             )
+            // No signingConfig: `assembleRelease` produces an unsigned APK. To
+            // distribute, create a keystore and wire a signingConfigs block here
+            // (keep its credentials out of VCS — e.g. in keystore.properties /
+            // a CI secret), then set `signingConfig = signingConfigs.getByName(...)`.
         }
     }
     compileOptions {
@@ -63,6 +70,14 @@ android {
     buildFeatures {
         compose = true
         buildConfig = true
+    }
+
+    // Make the exported Room schemas (app/schemas/) available to MigrationTestHelper
+    // as androidTest assets, so the v1→v2 migration is validated against them.
+    sourceSets {
+        getByName("androidTest") {
+            assets.srcDir("$projectDir/schemas")
+        }
     }
 }
 
@@ -101,6 +116,7 @@ dependencies {
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.ui.test.junit4)
     androidTestImplementation(libs.androidx.navigation.testing)
+    androidTestImplementation(libs.androidx.room.testing)
 
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
