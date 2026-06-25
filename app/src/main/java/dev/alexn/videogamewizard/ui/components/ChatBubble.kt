@@ -3,12 +3,14 @@ package dev.alexn.videogamewizard.ui.components
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -23,7 +25,10 @@ import dev.alexn.videogamewizard.data.model.ChatAuthor
 import dev.alexn.videogamewizard.data.model.ChatMessage
 
 @Composable
-fun ChatBubble(message: ChatMessage) {
+fun ChatBubble(
+    message: ChatMessage,
+    onSourceClick: (String) -> Unit = {},
+) {
     val isUser = message.author == ChatAuthor.USER
 
     Row(
@@ -68,6 +73,32 @@ fun ChatBubble(message: ChatMessage) {
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurface,
                 )
+
+                // Grounding citations (AI replies only): the source articles the
+                // answer was retrieved from, as tappable chips.
+                if (!isUser && message.sources.isNotEmpty()) {
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        text = stringResource(R.string.sources_label),
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp),
+                    ) {
+                        message.sources.forEach { title ->
+                            AssistChip(
+                                onClick = { onSourceClick(title) },
+                                label = {
+                                    Text(title, style = MaterialTheme.typography.labelSmall)
+                                },
+                            )
+                        }
+                    }
+                }
             }
         }
     }

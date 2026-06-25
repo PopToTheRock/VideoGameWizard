@@ -14,7 +14,7 @@ interface ChatHistoryRepository {
     /** The full conversation, in order, re-emitting whenever it changes. */
     val messages: Flow<List<ChatMessage>>
 
-    suspend fun append(author: ChatAuthor, text: String)
+    suspend fun append(author: ChatAuthor, text: String, sources: List<String> = emptyList())
 
     suspend fun clear()
 

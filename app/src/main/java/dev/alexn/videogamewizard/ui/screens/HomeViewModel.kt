@@ -43,6 +43,8 @@ class HomeViewModel(
         // The streaming partial reply; null when not streaming. Persisted to Room
         // only once, on completion — so streaming costs zero per-token DB writes.
         val streamingText: String? = null,
+        // Source titles for the in-flight reply (arrive before the first token).
+        val streamingSources: List<String> = emptyList(),
         // Ratings given this session, keyed by AI message id ("up" / "down").
         val feedback: Map<Long, String> = emptyMap(),
     ) {
@@ -62,6 +64,7 @@ class HomeViewModel(
                 input = t.input,
                 isAiTyping = t.isAiTyping,
                 streamingText = t.streamingText,
+                streamingSources = t.streamingSources,
                 feedback = t.feedback,
             )
         }.stateIn(viewModelScope, SharingStarted.Eagerly, HomeUiState())
@@ -91,17 +94,23 @@ class HomeViewModel(
         // Context for the model = the conversation shown before this message.
         val history = uiState.value.messages
         // Set typing synchronously so a concurrent send is reliably guarded.
-        transient.update { it.copy(input = "", isAiTyping = true, streamingText = null) }
+        transient.update {
+            it.copy(input = "", isAiTyping = true, streamingText = null, streamingSources = emptyList())
+        }
 
         sendJob = viewModelScope.launch {
             historyRepository.append(ChatAuthor.USER, trimmed)
             val partial = StringBuilder()
+            var sources: List<String> = emptyList()
             try {
                 chatRepository.streamMessage(trimmed, history).collect { event ->
                     when (event) {
-                        // Sources are captured here for feature #2 (citations);
-                        // not yet rendered.
-                        is ChatStreamEvent.Sources -> Unit
+                        // Sources lead the stream; hold them so they can render as
+                        // citation chips (live, then persisted with the reply).
+                        is ChatStreamEvent.Sources -> {
+                            sources = event.sources
+                            transient.update { it.copy(streamingSources = event.sources) }
+                        }
                         is ChatStreamEvent.Token -> {
                             partial.append(event.text)
                             // First token: swap the typing indicator for the
@@ -112,15 +121,19 @@ class HomeViewModel(
                         }
                     }
                 }
-                // Stream completed: persist the full reply once, then drop the
-                // transient partial so Room becomes the single source of truth.
-                historyRepository.append(ChatAuthor.AI, partial.toString())
-                transient.update { it.copy(isAiTyping = false, streamingText = null) }
+                // Stream completed: persist the full reply (with its sources) once,
+                // then drop the transient partial so Room is the single source of truth.
+                historyRepository.append(ChatAuthor.AI, partial.toString(), sources)
+                transient.update {
+                    it.copy(isAiTyping = false, streamingText = null, streamingSources = emptyList())
+                }
             } catch (e: CancellationException) {
                 // Stopped by the user (see stopGenerating) or wiped (clearChat).
                 // Persisting the partial, if any, is handled by the caller that
                 // cancelled us; here we only clear the in-flight flags.
-                transient.update { it.copy(isAiTyping = false, streamingText = null) }
+                transient.update {
+                    it.copy(isAiTyping = false, streamingText = null, streamingSources = emptyList())
+                }
                 throw e
             } catch (e: Exception) {
                 // Issue 5: map the failure to an actionable message. Keep any
@@ -131,8 +144,10 @@ class HomeViewModel(
                     } else {
                         "$partial\n\n${errorMessage(e)}"
                     }
-                historyRepository.append(ChatAuthor.AI, errorText)
-                transient.update { it.copy(isAiTyping = false, streamingText = null) }
+                historyRepository.append(ChatAuthor.AI, errorText, sources)
+                transient.update {
+                    it.copy(isAiTyping = false, streamingText = null, streamingSources = emptyList())
+                }
             }
         }
     }
@@ -145,15 +160,18 @@ class HomeViewModel(
     fun stopGenerating() {
         val inFlight = sendJob ?: return
         val partial = transient.value.streamingText
+        val sources = transient.value.streamingSources
         sendJob = null
         viewModelScope.launch {
             inFlight.cancelAndJoin()
             if (!partial.isNullOrBlank()) {
                 withContext(NonCancellable) {
-                    historyRepository.append(ChatAuthor.AI, partial)
+                    historyRepository.append(ChatAuthor.AI, partial, sources)
                 }
             }
-            transient.update { it.copy(isAiTyping = false, streamingText = null) }
+            transient.update {
+                it.copy(isAiTyping = false, streamingText = null, streamingSources = emptyList())
+            }
         }
     }
 
@@ -171,9 +189,8 @@ class HomeViewModel(
 
         transient.update { it.copy(feedback = it.feedback + (aiMessage.id to rating)) }
         viewModelScope.launch {
-            // Sources aren't persisted with messages yet, so none are sent for now
-            // (feature #2 will carry them through and enrich the feedback record).
-            val result = chatRepository.sendFeedback(query, aiMessage.text, rating, emptyList())
+            // Carry the reply's grounding sources into the preference record.
+            val result = chatRepository.sendFeedback(query, aiMessage.text, rating, aiMessage.sources)
             if (result.isFailure) {
                 transient.update { it.copy(feedback = it.feedback - aiMessage.id) }
             }

@@ -44,9 +44,27 @@ def test_article_is_split_into_multiple_chunks_when_long():
     assert len(chunks) >= 2
 
 
-def test_overlap_carries_the_previous_paragraph_into_the_next_chunk():
-    text = "\n\n".join(["aaaa", "bbbb", "cccc"])  # three 4-char paragraphs
-    chunks = chunker.chunk_article(text, max_chars=6, overlap_chars=4)
+def test_overlap_carries_trailing_text_into_the_next_chunk():
+    # Distinct per-paragraph vocab so overlap is detectable: the first word of a
+    # later chunk reappearing in the earlier chunk means the tail was carried over.
+    # Sizes chosen so the overlap actually fits under the cap (two paragraphs do not).
+    p1 = ("alpha " * 7).strip()  # ~41 chars
+    p2 = ("bravo " * 7).strip()
+    p3 = ("charlie " * 5).strip()
+    chunks = chunker.chunk_article("\n\n".join([p1, p2, p3]), max_chars=70, overlap_chars=20)
 
-    # Each new chunk re-includes the trailing paragraph of the previous one.
-    assert chunks == ["aaaa", "aaaa\n\nbbbb", "bbbb\n\ncccc"]
+    assert len(chunks) >= 2
+    assert all(len(c) <= 70 for c in chunks)  # cap honored despite overlap
+    for earlier, later in zip(chunks, chunks[1:], strict=False):
+        assert later.split()[0] in earlier
+
+
+def test_chunks_never_exceed_max_chars_even_with_overlap():
+    # A paragraph near the cap, repeated, stresses the overlap+append path that
+    # the old algorithm overshot (it produced ~2x-oversize chunks).
+    para = ("word " * 50).strip()  # ~249 chars
+    text = "\n\n".join([para] * 6)
+    for max_chars, overlap in [(300, 80), (256, 60), (500, 150)]:
+        chunks = chunker.chunk_article(text, max_chars=max_chars, overlap_chars=overlap)
+        assert chunks
+        assert all(len(c) <= max_chars for c in chunks)

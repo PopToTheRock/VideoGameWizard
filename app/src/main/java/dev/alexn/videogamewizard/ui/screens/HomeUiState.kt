@@ -13,6 +13,8 @@ data class HomeUiState(
     // The assistant's partial reply as tokens stream in; null when not streaming.
     // Persisted to [messages] only once the stream completes.
     val streamingText: String? = null,
+    // Source titles for the in-flight reply, shown as chips under the partial bubble.
+    val streamingSources: List<String> = emptyList(),
     // Ratings the user has given, keyed by AI message id ("up" / "down").
     val feedback: Map<Long, String> = emptyMap(),
 ) {

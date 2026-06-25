@@ -52,12 +52,33 @@ RTX 5070 Ti (Blackwell, sm_120) in WSL2. Config (`training_summary.json`):
 
 Train loss drops from **0.48 → ~0.14** within ~25 steps, then plateaus. Crucially,
 **val loss decreases monotonically** (0.181 → 0.169 → 0.167 → 0.161) — the model
-is generalizing, not memorizing. Val loss sitting below train loss reflects the
-assistant-only masking and a small, consistent target style.
+is generalizing, not memorizing.
+
+> Note: the `final` row's train loss (0.192) is the **epoch mean** (it includes the
+> high early steps), while val loss (0.161) is measured at convergence — so the two
+> aren't directly comparable. The converged per-step train loss (~0.14) is slightly
+> *below* val, the normal ordering; don't read the 0.192 vs 0.161 gap as a signal.
 
 ## Results — base vs. fine-tuned
 
-Quantitative: held-out **val loss 0.161** (the fine-tune fits the grounded-answer
+**Downstream win-rate (the metric that matters).** Val loss only shows the adapter
+learned the target *distribution*; it doesn't show the fine-tune is *better* at the
+deployed RAG-reader task (and since the teacher authored the labels, low val loss
+partly reflects self-distillation). `judge_models.py` measures the real thing: it
+sends the identical grounded prompt from the held-out val split to both models and
+has a judge model pick the better answer on **grounding + conciseness**, then reports
+a win-rate. Deterministic (temp 0, fixed seed) with A/B order alternated to cancel
+position bias; use a judge model distinct from both contestants for a fair read.
+
+```bash
+# from scraping/ — needs Ollama + both models registered
+py -m finetune.judge_models --finetuned vgw-rag:8b --n 50 --judge llama3.1:70b
+```
+
+This writes `judge_results.md` / `.json` (win-rate table). *Run it and paste the
+win-rate here* — that is the headline number for this milestone.
+
+**Proxy metric.** Held-out **val loss 0.161** (the fine-tune fits the grounded-answer
 target the base model does not produce by default).
 
 Qualitative (`comparison.md`, identical grounded prompt to both): the fine-tune

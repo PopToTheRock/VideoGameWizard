@@ -11,6 +11,7 @@
     <string name="chat_author_user">You</string>
     <string name="chat_author_ai">Wizard AI</string>
     <string name="chat_typing">Typing…</string>
+    <string name="sources_label">Sources</string>
 
     <!-- Content descriptions (accessibility) -->
     <string name="cd_back">Back</string>

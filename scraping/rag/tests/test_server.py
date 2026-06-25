@@ -106,6 +106,7 @@ def build_client(
     stream_status=200,
     stream_exc=None,
     feedback_path=None,
+    api_key=None,
     count=42,
 ):
     if documents is None:
@@ -115,11 +116,12 @@ def build_client(
     if ollama_json is None:
         ollama_json = {"message": {"content": "Use bombs on the cracked wall."}}
 
-    settings = (
-        server.Settings(feedback_path=feedback_path)
-        if feedback_path is not None
-        else server.Settings()
-    )
+    settings_kwargs = {}
+    if feedback_path is not None:
+        settings_kwargs["feedback_path"] = feedback_path
+    if api_key is not None:
+        settings_kwargs["api_key"] = api_key
+    settings = server.Settings(**settings_kwargs)
     app = server.create_app(settings)
     fake_http = FakeAsyncClient(
         response=FakeResponse(ollama_json),
@@ -302,6 +304,30 @@ def test_chat_stream_reports_http_status_error_as_error_event():
     assert events[-1]["type"] == "error"
 
 
+def test_chat_stream_reports_malformed_upstream_line_as_error_event():
+    # A non-JSON line from Ollama (proxy hiccup / version skew) must surface as an
+    # in-band error event, not crash the streaming generator mid-flight.
+    client, _ = build_client(stream_lines=["this is not json"])
+    resp = client.post("/chat/stream", json={"message": "hi"})
+
+    assert resp.status_code == 200
+    events = _parse_ndjson(resp.text)
+    assert events[0]["type"] == "sources"
+    assert events[-1]["type"] == "error"
+
+
+def test_chat_stream_emits_tokens_then_errors_on_a_late_malformed_line():
+    # Good tokens already streamed, then a corrupt line: prior tokens survive and
+    # the stream terminates with an error event rather than raising.
+    good = json.dumps({"message": {"content": "Use "}, "done": False})
+    client, _ = build_client(stream_lines=[good, "<<garbage>>"])
+    resp = client.post("/chat/stream", json={"message": "hi"})
+
+    events = _parse_ndjson(resp.text)
+    assert [e["token"] for e in events if e["type"] == "token"] == ["Use "]
+    assert events[-1]["type"] == "error"
+
+
 def test_chat_stream_rejects_blank_message():
     client, _ = build_client()
     assert client.post("/chat/stream", json={"message": "   "}).status_code == 422
@@ -359,4 +385,57 @@ def test_feedback_rejects_invalid_rating(tmp_path):
 def test_feedback_rejects_blank_query(tmp_path):
     client, _ = build_client(feedback_path=str(tmp_path / "f.jsonl"))
     resp = client.post("/feedback", json={"query": "   ", "answer": "a", "rating": "up"})
+    assert resp.status_code == 422
+
+
+# ---------------------------------------------------------------------------
+# API-key auth (VGW_API_KEY)
+# ---------------------------------------------------------------------------
+
+
+def test_no_api_key_configured_leaves_routes_open():
+    client, _ = build_client()  # api_key defaults to "" → auth disabled
+    assert client.post("/chat", json={"message": "hi"}).status_code == 200
+
+
+def test_protected_routes_reject_missing_or_wrong_key():
+    client, _ = build_client(api_key="s3cret")
+    # /chat, /chat/stream, /feedback, /stats are all gated.
+    assert client.post("/chat", json={"message": "hi"}).status_code == 401
+    assert client.post("/chat/stream", json={"message": "hi"}).status_code == 401
+    assert client.get("/stats").status_code == 401
+    assert (
+        client.post("/chat", json={"message": "hi"}, headers={"X-API-Key": "wrong"}).status_code
+        == 401
+    )
+
+
+def test_protected_routes_accept_correct_key():
+    client, _ = build_client(api_key="s3cret", stream_lines=_ollama_stream_lines("ok"))
+    headers = {"X-API-Key": "s3cret"}
+    assert client.post("/chat", json={"message": "hi"}, headers=headers).status_code == 200
+    assert client.post("/chat/stream", json={"message": "hi"}, headers=headers).status_code == 200
+
+
+def test_health_stays_open_even_with_api_key_set():
+    client, _ = build_client(api_key="s3cret")
+    assert client.get("/health").status_code == 200
+
+
+# ---------------------------------------------------------------------------
+# Input bounds (history caps)
+# ---------------------------------------------------------------------------
+
+
+def test_chat_rejects_overlong_history():
+    client, _ = build_client()
+    history = [{"role": "user", "content": "x"}] * (server.MAX_HISTORY_MESSAGES + 1)
+    resp = client.post("/chat", json={"message": "hi", "history": history})
+    assert resp.status_code == 422
+
+
+def test_chat_rejects_overlong_history_message_content():
+    client, _ = build_client()
+    history = [{"role": "user", "content": "x" * (server.MAX_MESSAGE_CHARS + 1)}]
+    resp = client.post("/chat", json={"message": "hi", "history": history})
     assert resp.status_code == 422
