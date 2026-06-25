@@ -54,7 +54,7 @@ flowchart TD
 
     subgraph Backend["🐍 RAG Server (FastAPI, port 8000)"]
         Server[POST /chat] --> Embed[Embed query<br/>all-MiniLM-L6-v2]
-        Embed --> Chroma[(ChromaDB<br/>189,958 chunks)]
+        Embed --> Chroma[(ChromaDB<br/>191,193 chunks)]
         Chroma -->|top-5 chunks| Prompt[Build grounded prompt]
         Prompt --> Ollama
     end
@@ -72,8 +72,8 @@ flowchart TD
 flowchart LR
     Wiki[Wikipedia<br/>MediaWiki API] --> Raw[~18k raw articles]
     Raw --> Clean[Cleaner<br/>17,825 articles]
-    Clean --> Chunk[Chunker<br/>1000 chars, 150 overlap]
-    Chunk --> Chunks[189,958 chunks]
+    Clean --> Chunk[Chunker<br/>≤850 chars, 130 overlap]
+    Chunk --> Chunks[~190k chunks]
     Chunks --> Embed[Embedder<br/>GPU batch]
     Embed --> Chroma[(ChromaDB)]
 ```
@@ -130,11 +130,16 @@ ollama serve
 cd scraping
 pip install -r requirements.txt      # server only: requirements-server.txt · CI/test: requirements-test.txt
 cd rag
-uvicorn server:app --host 0.0.0.0 --port 8000
+uvicorn server:app --host 127.0.0.1 --port 8000   # loopback — safe default for the emulator
 ```
 Endpoints: `/health` · `/stats` · interactive API docs at <http://localhost:8000/docs>.
 Configuration is environment-driven — override any default with a `VGW_` variable,
 e.g. `VGW_OLLAMA_MODEL=llama3.1:70b`.
+
+> **Exposing to a physical device.** Binding `--host 0.0.0.0` reaches the server from a
+> phone on your LAN, but also from anything else on the subnet. The `/chat`, `/chat/stream`,
+> `/feedback` and `/stats` routes can be gated behind a shared secret — set `VGW_API_KEY`
+> and have the client send it as an `X-API-Key` header. Leave it unset for loopback-only use.
 
 ### 3. Run the Android app
 Open the project in Android Studio and run on an emulator.
@@ -147,9 +152,22 @@ Open the project in Android Studio and run on an emulator.
 This is an actively-evolving portfolio project. See **[ROADMAP.md](ROADMAP.md)** for the full
 plan. Highlights shipped: testing & CI, backend hardening, a
 **[RAG evaluation harness](scraping/rag/eval/README.md)** (cross-encoder reranking lifts
-article-level hit@1 0.60→0.75), and **[QLoRA fine-tuning](scraping/finetune/README.md)** of
+article-level hit@1 0.53→0.68, chunk-level 0.29→0.47), and **[QLoRA fine-tuning](scraping/finetune/README.md)** of
 Llama 3.1 8B into a grounded RAG reader (`vgw-rag:8b`) — the headline milestone.
 
-## 📄 License
+## 📄 License & attribution
 
-[MIT](LICENSE) © Alex N.
+The original **source code** in this repository is licensed [MIT](LICENSE) © Alex N.
+
+The project also incorporates third-party data and models under their own licenses, which
+the MIT license does **not** cover:
+
+- **Knowledge corpus & data derived from it** (the committed `train`/`val`/`eval` sets and
+  the vector index) come from **English Wikipedia** and are licensed
+  **[CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/)** (attribution +
+  share-alike).
+- **Models** (Llama 3.1, the MiniLM embedder/reranker) are used under their respective
+  licenses.
+
+See **[ATTRIBUTION.md](ATTRIBUTION.md)** for the full breakdown and your obligations when
+redistributing.

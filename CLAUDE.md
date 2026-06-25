@@ -32,7 +32,9 @@ Three processes must be running for the app to work:
 ollama serve
 
 # 2. Start the RAG server (port 8000) — from scraping/rag/
-uvicorn server:app --host 0.0.0.0 --port 8000
+#    Loopback default (emulator). For a physical device on the LAN, bind 0.0.0.0
+#    and set VGW_API_KEY (client sends it as X-API-Key); see the RAG Server section.
+uvicorn server:app --host 127.0.0.1 --port 8000
 
 # 3. Run the Android app on emulator or physical device
 ```
@@ -121,6 +123,11 @@ keeping the partial (persisted under NonCancellable).
   `Flow<List<ChatMessageEntity>>` that `HomeViewModel` maps and `combine`s with transient UI
   state (input, typing) into `HomeUiState`. Sending/clearing writes through `ChatHistoryRepository`
   (Room-backed), so the conversation survives app restart. Code: `data/local/` + `data/repository/`.
+- **Source citations (DB v2).** An AI reply persists its grounding source titles in a `sources`
+  column (JSON-encoded; (de)serialised in `RoomChatHistoryRepository`). The streamed `sources`
+  event is held in transient UI state and rendered as tappable chips under the reply (`ChatBubble`
+  → Wikipedia article), then persisted on completion and carried into the `/feedback` record.
+  Schema bumped 1→2 with a real `MIGRATION_1_2` (`AppDatabase`); destructive fallback kept as a backstop.
 - **Manual dependency injection** (no Hilt yet — its Gradle plugin lags AGP 9.0): `VideoGameWizardApp`
   builds a `DefaultAppContainer` (`di/`) holding the Room DB + repositories, and
   `HomeViewModel.Factory` pulls them via `APPLICATION_KEY`. Unit tests inject fakes/mocks directly.
@@ -144,7 +151,7 @@ Chunking (scraping/rag/chunker.py)
   └── 1000-char chunks, 150-char overlap, paragraph-aligned
         ↓
 Embedding + ChromaDB (scraping/rag/embed.py)
-  └── sentence-transformers/all-MiniLM-L6-v2 → 189,958 chunks
+  └── sentence-transformers/all-MiniLM-L6-v2 → 191,193 chunks
         ↓
 RAG Server (scraping/rag/server.py) — FastAPI on port 8000
   ├── POST /chat — embed query → ChromaDB retrieval → Ollama call
@@ -232,10 +239,16 @@ cd scraping/wikipedia && py wikipedia_cleaner.py
 
 ### Chunker (`chunker.py`)
 - Splits articles on paragraph boundaries (`\n\n`)
-- Max 1000 chars per chunk, 150-char overlap
-- Paragraphs longer than 1000 chars split at sentence boundaries
+- **Max 850 chars/chunk, 130-char overlap** — sized to stay under the embedder's
+  256-token limit (`config.EMBED_MAX_TOKENS`). `chunk_article` **guarantees** no chunk
+  exceeds the cap (overlap is a trailing-char budget, not whole paragraphs); `main()`
+  asserts it. (Was 1000/150, which overshot ~2x and silently truncated ~69% of chunks
+  at embed time — see `docs/AUDIT.md` H6/H7.)
+- Paragraphs longer than the cap are split at sentence boundaries
 - Stable MD5 chunk IDs from `title::chunk_index`
-- Output: `scraping/data/chunks.jsonl` — 189,958 unique chunks (avg 11.2/article)
+- Output: `scraping/data/chunks.jsonl`. **Chunk count changes when re-chunked** at the new
+  size — rebuild with `py chunker.py` then re-embed with `py embed.py` (embed.py now
+  pins `max_seq_length` and logs the token-length distribution + any residual overflow).
 
 ```bash
 cd scraping/rag && py chunker.py
@@ -259,8 +272,9 @@ cd scraping/rag && py embed.py
   (ChromaDB collection, embedding model, HTTP client) load in a `lifespan` and are supplied
   by **dependency injection** — which is what makes the endpoints unit-testable.
 - `POST /chat` — `{message, history}` → top-k chunks → Ollama. Validates input (non-blank,
-  ≤4096 chars; history roles must be `user`/`assistant`); returns 502 on Ollama failure.
-  Buffered (full answer in one response); retained for scripts/eval/tests.
+  message + each history turn ≤4096 chars; history ≤50 turns; roles must be
+  `user`/`assistant`); returns 502 on Ollama failure. Buffered (full answer in one
+  response); retained for scripts/eval/tests.
 - `POST /chat/stream` — same contract, streamed as **NDJSON** (`application/x-ndjson`):
   one `{"type":"sources",...}` line, then `{"type":"token",...}` per token, then
   `{"type":"done"}` (or `{"type":"error","message":...}` if generation fails mid-stream —
@@ -271,14 +285,18 @@ cd scraping/rag && py embed.py
   (one `{timestamp, rating, model, query, answer, sources}` line per tap). A preference
   dataset for later DPO/RLHF or quality analysis; the blocking append is offloaded to a
   threadpool. `data/` is gitignored, so the log stays local.
-- `GET /health` — chunk count · `GET /stats` — model/collection/config · `/docs` — OpenAPI UI
+- `GET /health` — chunk count (always open) · `GET /stats` — model/collection/config · `/docs` — OpenAPI UI
+- **Optional auth**: set `VGW_API_KEY` to require a matching `X-API-Key` header on
+  `/chat`, `/chat/stream`, `/feedback`, `/stats` (`/health` stays open). Unset = off
+  (loopback-only default). Bind 127.0.0.1 for the emulator; only use `--host 0.0.0.0`
+  (physical-device/LAN) together with a key.
 - Heavy imports (chromadb, sentence-transformers) are deferred to `lifespan` so the module
   imports without the ML stack — tests run on just `requirements-test.txt`.
 - Tests: `scraping/rag/tests/` (pytest, mocked ChromaDB + Ollama). Lint/format: `ruff` (see `ruff.toml`).
 
 ```bash
 cd scraping/rag
-uvicorn server:app --host 0.0.0.0 --port 8000
+uvicorn server:app --host 127.0.0.1 --port 8000   # add VGW_API_KEY + --host 0.0.0.0 for LAN
 ```
 
 ### Evaluation Harness (`eval/`)
@@ -309,7 +327,9 @@ py -m eval.run_eval                               # baseline vs reranked
   loss**; eval chunks excluded. `train_qlora.py` (**WSL2 venv** `~/vgw-finetune`: Unsloth +
   TRL, torch cu128 on sm_120) → adapter + `loss_curve.png` + `training_summary.json`.
   `export_merged.py` (WSL2) merges the adapter to 16-bit; Ollama then quantizes on import.
-  `compare_models.py` produces the base-vs-fine-tuned `comparison.md`.
+  `compare_models.py` produces the qualitative base-vs-fine-tuned `comparison.md`;
+  `judge_models.py` produces the **quantitative** downstream win-rate (LLM-judge over
+  the val split, deterministic, position-bias-controlled) → `judge_results.md`/`.json`.
 - **`import unsloth` must precede trl/transformers** in training scripts. GGUF quantization
   is routed through `ollama create --quantize` (no llama.cpp/cmake build). `outputs/`
   (adapter, merged model) is gitignored; the dataset + results are committed.

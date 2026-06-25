@@ -70,8 +70,9 @@ Legend: ✅ done · 🚧 in progress · ⬜ not started
 - ✅ **RAG evaluation harness** (`scraping/rag/eval/`): synthetic, seed-reproducible 150-Q
   gold set (LLM self-labels each question's source chunk); retrieval metrics (hit-rate@k,
   MRR, nDCG@k) at both chunk- and article-level; cross-encoder reranking with before/after
-  numbers (article-level hit@1 0.60→0.75, MRR 0.69→0.79). Pure metric fns unit-tested. See
-  `eval/README.md`. Deferred: generation metrics (RAGAS faithfulness/answer-relevancy).
+  numbers (article-level hit@1 0.53→0.68, MRR 0.62→0.73; chunk-level hit@1 0.29→0.47, MRR
+  0.38→0.53). Pure metric fns unit-tested. See `eval/README.md`. Deferred: generation metrics
+  (RAGAS faithfulness/answer-relevancy).
 - ✅ **Fine-tuning data prep** (`scraping/finetune/prepare_data.py`): 1,500 grounded
   (context+question → answer) examples in `messages` format mirroring the server's exact
   prompt; **assistant-only loss**; eval chunks excluded (0 leakage). 1,350 train / 150 val.
