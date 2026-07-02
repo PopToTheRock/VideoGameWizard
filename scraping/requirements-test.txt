@@ -4,7 +4,7 @@
 # server.py defers those imports to application startup (lifespan), so the
 # module can be imported and tested without the heavy ML stack installed.
 
-fastapi>=0.115
+fastapi>=0.139.0
 pydantic>=2.9
 pydantic-settings>=2.4
 httpx>=0.27
