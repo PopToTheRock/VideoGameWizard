@@ -213,6 +213,24 @@ class HomeViewModelTest {
     }
 
     @Test
+    fun `history sent with a message is windowed to the most recent turns`() = runTest(scheduler) {
+        val historySlot = slot<List<ChatMessage>>()
+        every { chatRepository.streamMessage(any(), capture(historySlot)) } returns
+            flowOf(ChatStreamEvent.Token("ok"))
+
+        // Seed well past the window (and past the server's 50-turn 422 cap —
+        // an unwindowed conversation would permanently fail from here on).
+        repeat(60) { historyRepository.append(ChatAuthor.USER, "turn $it") }
+        val vm = newViewModel()
+        vm.onInputChange("latest question")
+        vm.sendMessage()
+        advanceUntilIdle()
+
+        assertEquals(20, historySlot.captured.size)
+        assertEquals("turn 59", historySlot.captured.last().text)
+    }
+
+    @Test
     fun `a second send is ignored while a request is in flight`() = runTest(scheduler) {
         stubReply("ok")
 

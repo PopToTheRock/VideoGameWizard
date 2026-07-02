@@ -10,9 +10,12 @@ import dev.alexn.videogamewizard.data.network.RetrofitClient
 import dev.alexn.videogamewizard.data.network.StreamEvent
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.channelFlow
 import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 import java.io.IOException
 
@@ -36,30 +39,52 @@ class ChatRepository(
      * Emits a [ChatStreamEvent.Sources] first, then a [ChatStreamEvent.Token] per
      * token; the flow completes normally when the server sends its `done` event.
      * A network failure — or an in-band `error` event — is thrown so the collector
-     * can map it to a user-facing message. Cancellation propagates normally: the
-     * cold flow is abandoned and the [okhttp3.ResponseBody] is closed by [use],
-     * aborting the in-flight HTTP read.
+     * can map it to a user-facing message.
      *
-     * Reads run on [Dispatchers.IO] because `readUtf8Line` is a blocking call.
+     * Reads run on [Dispatchers.IO] because `readUtf8Line` is a blocking call —
+     * one that does NOT observe coroutine cancellation. A concurrent watcher
+     * closes the [okhttp3.ResponseBody] the moment the collector cancels, which
+     * makes a blocked read abort immediately (instead of hanging until the read
+     * timeout while Stop appears to do nothing).
      */
     fun streamMessage(
         message: String,
         history: List<ChatMessage>,
-    ): Flow<ChatStreamEvent> = flow {
+    ): Flow<ChatStreamEvent> = channelFlow {
         val body = api.chatStream(ChatRequest(message = message, history = history.toWire()))
-        body.use { responseBody ->
-            val source = responseBody.source()
+        val closeOnCancel = launch {
+            try {
+                awaitCancellation()
+            } finally {
+                body.close()
+            }
+        }
+        try {
+            val source = body.source()
             while (true) {
-                val line = source.readUtf8Line() ?: break
+                val line = try {
+                    source.readUtf8Line() ?: break
+                } catch (e: IOException) {
+                    // The watcher's close() aborts a blocked read with an
+                    // IOException; report that as cancellation, not as a network
+                    // failure. A real network error arrives while still active.
+                    if (!isActive) {
+                        throw CancellationException("Stream cancelled").apply { initCause(e) }
+                    }
+                    throw e
+                }
                 if (line.isBlank()) continue
                 val event = json.decodeFromString<StreamEvent>(line)
                 when (event.type) {
-                    "sources" -> emit(ChatStreamEvent.Sources(event.sources))
-                    "token" -> event.token?.let { emit(ChatStreamEvent.Token(it)) }
+                    "sources" -> send(ChatStreamEvent.Sources(event.sources))
+                    "token" -> event.token?.let { send(ChatStreamEvent.Token(it)) }
                     "error" -> throw IOException(event.message ?: "Stream error")
-                    "done" -> return@use
+                    "done" -> break
                 }
             }
+        } finally {
+            closeOnCancel.cancel()
+            body.close()
         }
     }.flowOn(Dispatchers.IO)
 

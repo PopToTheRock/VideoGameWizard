@@ -30,6 +30,11 @@ import java.net.SocketTimeoutException
 // Issue 4: cap input to prevent oversized requests reaching the server.
 private const val MAX_INPUT_LENGTH = 4096
 
+// Window the context sent with each message. The server rejects histories over
+// 50 turns (422), so an uncapped conversation would permanently fail after ~50
+// messages; recent turns are what matter to the model anyway.
+private const val MAX_HISTORY_TURNS = 20
+
 class HomeViewModel(
     private val chatRepository: ChatRepository,
     private val historyRepository: ChatHistoryRepository,
@@ -91,8 +96,8 @@ class HomeViewModel(
         // Issue 4: reject empty or oversized input.
         if (trimmed.isEmpty() || trimmed.length > MAX_INPUT_LENGTH) return
 
-        // Context for the model = the conversation shown before this message.
-        val history = uiState.value.messages
+        // Context for the model = the most recent turns shown before this message.
+        val history = uiState.value.messages.takeLast(MAX_HISTORY_TURNS)
         // Set typing synchronously so a concurrent send is reliably guarded.
         transient.update {
             it.copy(input = "", isAiTyping = true, streamingText = null, streamingSources = emptyList())
