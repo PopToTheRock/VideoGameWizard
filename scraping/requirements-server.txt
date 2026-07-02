@@ -16,7 +16,7 @@ httpx>=0.27
 
 # --- Embeddings + vector store (imported lazily at server startup) ---
 sentence-transformers>=3.0
-chromadb>=0.5
+chromadb>=1.5.9
 
 # PyTorch: NOTE — on Linux a plain `pip install torch` from PyPI is the CUDA
 # build (~5-7 GB with its nvidia-* wheels). The Dockerfile pre-installs the
