@@ -8,9 +8,12 @@
 # The vector index is large and mounted as a volume, not baked into the image.
 data/
 
-# Not needed at runtime.
+# Not needed at runtime. finetune/ especially: its gitignored outputs/ holds
+# ~16 GB of checkpoints that would otherwise stream to the daemon every build.
 rag/tests/
 wikipedia/
 wikigg/
 wikis/
+finetune/
+unsloth_compiled_cache/
 *.md
