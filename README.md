@@ -10,7 +10,7 @@
 ![Platform](https://img.shields.io/badge/platform-Android-3DDC84?logo=android&logoColor=white)
 ![Kotlin](https://img.shields.io/badge/Kotlin-2.x-7F52FF?logo=kotlin&logoColor=white)
 ![Jetpack Compose](https://img.shields.io/badge/UI-Jetpack%20Compose-4285F4?logo=jetpackcompose&logoColor=white)
-![Python](https://img.shields.io/badge/Python-3.14-3776AB?logo=python&logoColor=white)
+![Python](https://img.shields.io/badge/Python-3.11%2B-3776AB?logo=python&logoColor=white)
 ![FastAPI](https://img.shields.io/badge/API-FastAPI-009688?logo=fastapi&logoColor=white)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
@@ -47,13 +47,13 @@ flowchart TD
     subgraph Device["📱 Android App (Jetpack Compose, MVVM)"]
         UI[HomeScreen] --> VM[HomeViewModel<br/>StateFlow]
         VM --> Repo[ChatRepository]
-        Repo -->|Retrofit POST /chat| Net
+        Repo -->|Retrofit POST /chat/stream| Net
     end
 
     Net((HTTP)) --> Server
 
     subgraph Backend["🐍 RAG Server (FastAPI, port 8000)"]
-        Server[POST /chat] --> Embed[Embed query<br/>all-MiniLM-L6-v2]
+        Server[POST /chat/stream] --> Embed[Embed query<br/>all-MiniLM-L6-v2]
         Embed --> Chroma[(ChromaDB<br/>191,193 chunks)]
         Chroma -->|top-5 chunks| Prompt[Build grounded prompt]
         Prompt --> Ollama
@@ -63,8 +63,12 @@ flowchart TD
         Ollama[llama3.1:8b] --> Answer[Answer + sources]
     end
 
-    Answer -->|JSON| Net
+    Answer -->|NDJSON stream: sources → tokens → done| Net
 ```
+
+Answers **stream token-by-token** to the app and arrive with **source citations** rendered
+as tappable Wikipedia chips. (A buffered `POST /chat` is kept for scripts and the eval
+harness.)
 
 ### Data & RAG pipeline (offline, one-time)
 
@@ -99,7 +103,11 @@ VideoGameWizard/
 │       └── ui/               # screens, components, theme
 ├── scraping/                 # Python data + RAG pipeline
 │   ├── wikipedia/            # MediaWiki fetcher + cleaner
-│   └── rag/                  # chunker, embedder, FastAPI server
+│   ├── rag/                  # chunker, embedder, FastAPI server
+│   │   └── eval/             # retrieval-quality eval harness (hit@k / MRR / nDCG + reranking)
+│   └── finetune/             # QLoRA fine-tuning pipeline + model card (vgw-rag:8b)
+├── docs/                     # AUDIT.md — full professional audit report
+├── ATTRIBUTION.md            # Data/model licenses (Wikipedia CC BY-SA, Llama, MiniLM)
 ├── CLAUDE.md                 # Internal architecture & dev notes
 └── ROADMAP.md                # Portfolio roadmap (this project's plan)
 ```
@@ -116,9 +124,30 @@ VideoGameWizard/
 > both the RAG server and Ollama (the image installs only `requirements-server.txt`, so it
 > stays slim). On first run, pull the model into the Ollama service:
 > `docker compose exec ollama ollama pull llama3.1:8b`. A prebuilt ChromaDB index is expected
-> at `scraping/data/chromadb` — build it once with `chunker.py` then `embed.py`.
+> at `scraping/data/chromadb` — build it once with **step 0** below.
 >
 > The manual steps below are the alternative if you'd rather run the pieces directly.
+
+### 0. Build the knowledge base (one-time, ~3 h)
+
+The Wikipedia corpus and the vector index are **not** in the repo (they're CC BY-SA-licensed
+data, kept out of the MIT-licensed tree — see [ATTRIBUTION.md](ATTRIBUTION.md)). The server
+won't start without the index, so build it once:
+
+```bash
+cd scraping
+pip install -r requirements.txt      # full pipeline deps (torch, sentence-transformers, chromadb, …)
+
+cd wikipedia
+python wikipedia_fetcher.py          # ~2.5 h — crawls ~18k game articles via the MediaWiki API
+python wikipedia_cleaner.py          # strips boilerplate → wikipedia_clean.jsonl
+
+cd ../rag
+python chunker.py                    # paragraph-aligned chunks, ≤850 chars → chunks.jsonl
+python embed.py                      # embeds ~190k chunks into ChromaDB (GPU: minutes · CPU: hours)
+```
+
+A CUDA GPU makes `embed.py` take minutes instead of hours; everything else is CPU-bound.
 
 ### 1. Start the model
 ```bash
@@ -138,8 +167,11 @@ e.g. `VGW_OLLAMA_MODEL=llama3.1:70b`.
 
 > **Exposing to a physical device.** Binding `--host 0.0.0.0` reaches the server from a
 > phone on your LAN, but also from anything else on the subnet. The `/chat`, `/chat/stream`,
-> `/feedback` and `/stats` routes can be gated behind a shared secret — set `VGW_API_KEY`
-> and have the client send it as an `X-API-Key` header. Leave it unset for loopback-only use.
+> `/feedback` and `/stats` routes can be gated behind a shared secret — set `VGW_API_KEY`,
+> which clients must send as an `X-API-Key` header. **Note:** the Android app does not yet
+> send this header (planned — see ROADMAP), so with a key set, only scripts/`curl` can talk
+> to the server. For the app on a physical device today, prefer a trusted LAN and keep the
+> server firewalled.
 
 ### 3. Run the Android app
 Open the project in Android Studio and run on an emulator.
@@ -152,7 +184,8 @@ Open the project in Android Studio and run on an emulator.
 This is an actively-evolving portfolio project. See **[ROADMAP.md](ROADMAP.md)** for the full
 plan. Highlights shipped: testing & CI, backend hardening, a
 **[RAG evaluation harness](scraping/rag/eval/README.md)** (cross-encoder reranking lifts
-article-level hit@1 0.53→0.68, chunk-level 0.29→0.47), and **[QLoRA fine-tuning](scraping/finetune/README.md)** of
+article-level hit@1 0.53→0.68, chunk-level 0.29→0.47 — measured offline; the server currently
+serves baseline top-k retrieval), and **[QLoRA fine-tuning](scraping/finetune/README.md)** of
 Llama 3.1 8B into a grounded RAG reader (`vgw-rag:8b`) — the headline milestone.
 
 ## 📄 License & attribution

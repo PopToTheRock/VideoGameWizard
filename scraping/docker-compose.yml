@@ -11,13 +11,18 @@ services:
     build: .
     image: videogamewizard-rag
     ports:
-      - "8000:8000"
+      # Loopback-only: publishing "8000:8000" would expose the (auth-off) server
+      # to the whole LAN. To serve other devices, set VGW_API_KEY and widen this.
+      - "127.0.0.1:8000:8000"
     environment:
       VGW_OLLAMA_URL: http://ollama:11434
       VGW_CHROMA_PATH: /data/chromadb
+      # Keep the feedback/preference log on the mounted volume — the in-image
+      # default (/app/data) is ephemeral and vanishes on container recreation.
+      VGW_FEEDBACK_PATH: /data/feedback.jsonl
       HF_HOME: /models
     volumes:
-      - ./data:/data        # prebuilt ChromaDB index (read-only at runtime)
+      - ./data:/data        # prebuilt ChromaDB index (read) + feedback.jsonl (append)
       - hf-cache:/models    # cache the embedding model across restarts
     depends_on:
       - ollama
@@ -26,7 +31,8 @@ services:
   ollama:
     image: ollama/ollama:latest
     ports:
-      - "11434:11434"
+      # Loopback-only: raw Ollama has no auth at all.
+      - "127.0.0.1:11434:11434"
     volumes:
       - ollama-models:/root/.ollama
     restart: unless-stopped

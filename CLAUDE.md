@@ -19,8 +19,8 @@ This is an Android project built with Gradle. Use Android Studio or the Gradle w
 # Run a single instrumented test class
 ./gradlew connectedAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=dev.alexn.videogamewizard.NavigationTest
 
-# Run unit tests (currently none exist)
-./gradlew test
+# Run JVM unit tests (31 tests: HomeViewModel, ChatRepository)
+./gradlew :app:testDebugUnitTest
 ```
 
 ## Running the Full Stack
@@ -33,7 +33,8 @@ ollama serve
 
 # 2. Start the RAG server (port 8000) — from scraping/rag/
 #    Loopback default (emulator). For a physical device on the LAN, bind 0.0.0.0
-#    and set VGW_API_KEY (client sends it as X-API-Key); see the RAG Server section.
+#    and set VGW_API_KEY (sent as X-API-Key — scripts/curl only; the Android app
+#    does not send the header yet); see the RAG Server section.
 uvicorn server:app --host 127.0.0.1 --port 8000
 
 # 3. Run the Android app on emulator or physical device
@@ -148,14 +149,16 @@ Scraping Pipeline
 Data Cleaning (scraping/wikipedia/wikipedia_cleaner.py)
         ↓
 Chunking (scraping/rag/chunker.py)
-  └── 1000-char chunks, 150-char overlap, paragraph-aligned
+  └── ≤850-char chunks, 130-char overlap, paragraph-aligned
         ↓
 Embedding + ChromaDB (scraping/rag/embed.py)
   └── sentence-transformers/all-MiniLM-L6-v2 → 191,193 chunks
         ↓
 RAG Server (scraping/rag/server.py) — FastAPI on port 8000
-  ├── POST /chat — embed query → ChromaDB retrieval → Ollama call
-  └── GET /health — liveness check
+  ├── POST /chat/stream — embed query → ChromaDB retrieval → Ollama (NDJSON stream; the app's path)
+  ├── POST /chat — buffered variant (scripts/eval/tests)
+  ├── POST /feedback — thumbs up/down preference log
+  └── GET /health — liveness check · GET /stats — config info
         ↓
 Ollama — llama3.1:8b on port 11434
         ↓ REST API (Retrofit)
@@ -189,7 +192,7 @@ pip install fastapi uvicorn requests
 pip install scrapy beautifulsoup4
 ```
 
-**WSL2 (fine-tuning — not yet installed):**
+**WSL2 (fine-tuning — installed in the `~/vgw-finetune` venv):**
 ```bash
 pip install torch --index-url https://download.pytorch.org/whl/cu128
 pip install unsloth transformers peft datasets trl
@@ -367,10 +370,15 @@ These were identified in a full code review. See `ROADMAP.md` for the broader po
 - ✅ **Issue 10 — Missing `@Immutable`**: added to `ChatMessage` and `HomeUiState`.
 - ✅ **Timeout magic numbers**: `RetrofitClient` timeouts extracted to named constants with a comment.
 
+### Resolved later (Milestones 2–3)
+
+- ✅ **Unit tests**: 31 JVM tests (`HomeViewModel`, `ChatRepository`) + 6 instrumented
+  (Room migration, citation chips, navigation), all in CI except instrumented.
+- ✅ **Dependency injection**: manual constructor DI via `AppContainer` (Hilt deferred —
+  its Gradle plugin lags AGP 9.0).
+
 ### Still open (tracked in ROADMAP.md)
 
-- **No unit tests** — `HomeViewModel` and `ChatRepository` have zero unit coverage (Milestone 2).
-- **No dependency injection** — `HomeViewModel` constructs `ChatRepository()` directly. Introduce Hilt (Milestone 3).
 - **No spacing/typography design system** — padding and text sizes are scattered magic numbers. Consider a `Spacing` object for consistency.
 
 ---

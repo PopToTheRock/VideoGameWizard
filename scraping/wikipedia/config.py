@@ -3,7 +3,10 @@ Wikipedia fetcher configuration.
 """
 
 # Identifies our bot to Wikipedia — required by their API policy
-USER_AGENT = "VideoGameWizardBot/1.0 (educational project; contact: your@email.com)"
+USER_AGENT = (
+    "VideoGameWizardBot/1.0 "
+    "(https://github.com/PopToTheRock/VideoGameWizard; alex.novicicy@gmail.com)"
+)
 
 # Seed categories to crawl. The fetcher recurses into subcategories up to
 # CATEGORY_DEPTH levels deep. Adjust this list to broaden or narrow scope.

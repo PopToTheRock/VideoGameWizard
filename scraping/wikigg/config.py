@@ -3,7 +3,10 @@ wiki.gg fetcher configuration.
 """
 
 # Identifies our bot to wiki.gg — required by MediaWiki API policy
-USER_AGENT = "VideoGameWizardBot/1.0 (educational project; contact: your@email.com)"
+USER_AGENT = (
+    "VideoGameWizardBot/1.0 "
+    "(https://github.com/PopToTheRock/VideoGameWizard; alex.novicicy@gmail.com)"
+)
 
 # wiki.gg subdomains to scrape.
 # Each entry is the subdomain prefix, e.g. "zelda" → zelda.wiki.gg

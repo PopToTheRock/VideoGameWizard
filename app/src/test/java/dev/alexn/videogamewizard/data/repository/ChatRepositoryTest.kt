@@ -7,7 +7,10 @@ import dev.alexn.videogamewizard.data.network.RagApi
 import io.mockk.coEvery
 import io.mockk.mockk
 import io.mockk.slot
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.toList
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.ResponseBody
@@ -110,6 +113,42 @@ class ChatRepositoryTest {
 
         assertTrue(result.isFailure)
         assertTrue(result.exceptionOrNull() is IOException)
+    }
+
+    /** Delegating [ResponseBody] that records whether close() was called. */
+    private class TrackingResponseBody(private val delegate: ResponseBody) : ResponseBody() {
+        @Volatile var closed = false
+
+        override fun contentType() = delegate.contentType()
+
+        override fun contentLength() = delegate.contentLength()
+
+        override fun source() = delegate.source()
+
+        override fun close() {
+            closed = true
+            delegate.close()
+        }
+    }
+
+    @Test
+    fun `cancelling collection closes the response body`() = runBlocking {
+        // No `done` line: from the client's perspective the stream is still in
+        // flight when the collector cancels after the first event.
+        val body = TrackingResponseBody(
+            ndjsonBody(
+                """{"type":"sources","sources":[]}""",
+                """{"type":"token","token":"Use "}""",
+            ),
+        )
+        coEvery { api.chatStream(any()) } returns body
+
+        repository.streamMessage("q", emptyList()).first() // take one event, then cancel
+
+        // The close runs on the producer's IO dispatcher; give it a moment.
+        val deadline = System.currentTimeMillis() + 2_000
+        while (!body.closed && System.currentTimeMillis() < deadline) delay(5)
+        assertTrue(body.closed)
     }
 
     @Test

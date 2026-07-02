@@ -16,3 +16,14 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
+  # Python dependencies (requirements*.txt)
+  - package-ecosystem: "pip"
+    directory: "/scraping"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+  # Docker base image (python:3.12-slim)
+  - package-ecosystem: "docker"
+    directory: "/scraping"
+    schedule:
+      interval: "weekly"

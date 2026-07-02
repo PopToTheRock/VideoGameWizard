@@ -11,7 +11,7 @@ Run from scraping/wikis/:
 """
 
 import re
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from urllib.parse import urlparse
 
 from bs4 import BeautifulSoup
@@ -41,12 +41,12 @@ ARTICLE_PATH_RE = re.compile(r"^/wiki/[^:]+$")
 
 # Fandom noise selectors — elements to strip before extracting text
 STRIP_SELECTORS = [
-    "aside",            # infobox sidebars
-    ".navbox",          # navigation boxes
-    ".toc",             # table of contents
-    ".references",      # citation lists
+    "aside",  # infobox sidebars
+    ".navbox",  # navigation boxes
+    ".toc",  # table of contents
+    ".references",  # citation lists
     ".mw-editsection",  # [edit] links
-    "sup.reference",    # inline footnote numbers
+    "sup.reference",  # inline footnote numbers
     ".noprint",
     "script",
     "style",
@@ -74,6 +74,7 @@ class FandomSpider(Spider):
 
     def start_requests(self):
         import scrapy
+
         for wiki_name, start_url in self._wikis:
             yield scrapy.Request(
                 start_url,
@@ -102,6 +103,7 @@ class FandomSpider(Spider):
 
     def _follow_article_links(self, response: Response, wiki_name: str):
         import scrapy
+
         base = urlparse(response.url)
         seen_urls = set()
 
@@ -140,8 +142,16 @@ class FandomSpider(Spider):
         title = title_tag.get_text(strip=True)
 
         # Skip disambiguation, talk, file, category, user pages
-        skip_prefixes = ("talk:", "file:", "category:", "user:", "template:",
-                         "help:", "special:", "mediawiki:")
+        skip_prefixes = (
+            "talk:",
+            "file:",
+            "category:",
+            "user:",
+            "template:",
+            "help:",
+            "special:",
+            "mediawiki:",
+        )
         if any(title.lower().startswith(p) for p in skip_prefixes):
             return None
 
@@ -164,10 +174,7 @@ class FandomSpider(Spider):
             return None
 
         # --- Categories ---
-        categories = [
-            a.get_text(strip=True)
-            for a in soup.select("#mw-normal-catlinks ul li a")
-        ]
+        categories = [a.get_text(strip=True) for a in soup.select("#mw-normal-catlinks ul li a")]
 
         return WikiArticleItem(
             wiki_name=wiki_name,
@@ -175,7 +182,7 @@ class FandomSpider(Spider):
             url=response.url,
             content=content,
             categories=categories,
-            scraped_at=datetime.now(timezone.utc).isoformat(),
+            scraped_at=datetime.now(UTC).isoformat(),
         )
 
     # ------------------------------------------------------------------
@@ -186,9 +193,7 @@ class FandomSpider(Spider):
     def _extract_text(element) -> str:
         """Convert an HTML element to clean plain text."""
         lines = []
-        for block in element.find_all(
-            ["p", "h2", "h3", "h4", "li", "dt", "dd"], recursive=True
-        ):
+        for block in element.find_all(["p", "h2", "h3", "h4", "li", "dt", "dd"], recursive=True):
             text = block.get_text(separator=" ", strip=True)
             text = re.sub(r"\s+", " ", text).strip()
             if text:

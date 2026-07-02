@@ -18,8 +18,8 @@ context**, concisely, in the VideoGameWizard voice.
 | Source | 1,500 chunks sampled (seed 42) from the same `chunks.jsonl` corpus the server retrieves over |
 | Labels | `llama3.1:8b` writes one (question, grounded answer) per chunk — self-distillation of the target behavior |
 | Split | **1,350 train / 150 val** |
-| Leakage control | every chunk used by the retrieval eval set is **excluded** from training (0 overlap, verified) |
-| Format | `messages` (system+user+assistant); the **system message carries the chunk** — byte-for-byte the server's runtime prompt |
+| Leakage control | every chunk in the retrieval eval set was **excluded** from training — 0 overlap, verified *at prep time*. The eval set was later regenerated after a re-chunking fix, so the guarantee is point-in-time: 1 of the 150 *current* gold chunks also appears as a training context |
+| Format | `messages` (system+user+assistant); the **system message carries the chunk**, using the same system-prompt text as the server. (Known small train/serve delta: the HF training template prepends Llama's date-header lines, which Ollama's serving template omits.) |
 | Loss | **assistant-only** (the prompt, including the context, is masked) — the model is graded only on the answer it produces |
 
 Built by `prepare_data.py`; the dataset (`data/train.jsonl`, `data/val.jsonl`) is
@@ -126,11 +126,23 @@ verbose scaffolding. Representative held-out cases:
   three. The conciseness objective has a real failure mode on enumeration answers.
 - **Teacher ceiling.** Labels come from `llama3.1:8b` itself, so the fine-tune
   inherits the teacher's style and any of its errors — it cannot exceed the
-  teacher's factual accuracy, only sharpen the format/grounding behavior.
+  teacher's factual accuracy, only sharpen the format/grounding behavior. The
+  judge's "consistent with the reference" criterion also mildly favors the
+  fine-tune, since the references share the teacher's concise style.
+- **The eval measures the training-shaped task, not the deployed one.** Training,
+  val, and the judge all prompt with a *single gold chunk*; the deployed server
+  stuffs the **top-5 retrieved chunks** (including distractors) into the context.
+  The win-rate is evidence for the reader skill itself — how the edge holds up
+  with distractor chunks is unmeasured.
 - **Single epoch, r=16.** A deliberately light, fast configuration; not pushed for
   maximum lift.
 
 ## Reproduce
+
+> The committed `data/*.jsonl` are the canonical training set. Step 1 samples from
+> the *current* `chunks.jsonl`, which has been re-chunked since the original run —
+> so the same seed no longer regenerates the identical dataset. Skip step 1 to
+> train on the committed data.
 
 ```bash
 # 1. Data prep (Windows, needs Ollama serving llama3.1:8b)

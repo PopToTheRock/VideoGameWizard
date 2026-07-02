@@ -4,7 +4,7 @@ SPIDER_MODULES = ["wikis.spiders"]
 NEWSPIDER_MODULE = "wikis.spiders"
 
 # Identify ourselves honestly
-USER_AGENT = "VideoGameWizardBot/1.0 (+https://github.com/your-repo)"
+USER_AGENT = "VideoGameWizardBot/1.0 (+https://github.com/PopToTheRock/VideoGameWizard)"
 
 # Respect robots.txt
 ROBOTSTXT_OBEY = True
