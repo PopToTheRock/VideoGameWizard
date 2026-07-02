@@ -14,7 +14,8 @@ Run from scraping/rag/ (loopback only — safe default for the emulator workflow
 To reach the server from a physical device on your LAN, bind 0.0.0.0 *and* set a
 shared secret so the inference/feedback routes aren't open to the whole subnet:
     VGW_API_KEY=$(openssl rand -hex 16) uvicorn server:app --host 0.0.0.0 --port 8000
-(the Android client then sends it as the ``X-API-Key`` header).
+(clients send it as the ``X-API-Key`` header; note the Android app does not send
+one yet, so a keyed server currently serves scripts/curl only).
 
 Configuration is environment-driven (see ``Settings``); every value has a
 sensible local-dev default and can be overridden with a ``VGW_`` env var, e.g.

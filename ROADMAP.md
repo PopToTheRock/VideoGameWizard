@@ -34,9 +34,12 @@ Legend: ✅ done · 🚧 in progress · ⬜ not started
 
 - ✅ **Android unit tests** (JUnit + MockK + coroutines-test): `HomeViewModel`
   (success / network-error / timeout / cancellation-safety / validation / concurrent-send guard),
-  `ChatRepository` (role mapping, `Result`, cancellation rethrow) — 19 tests
+  `ChatRepository` (role mapping, `Result`, cancellation rethrow) — 19 tests at M2, since
+  grown to 31 (streaming, feedback, history windowing, cancellation body-close), plus 6
+  instrumented tests (Room migration, citation chips, navigation)
 - ✅ **Python tests** (pytest): chunker pure functions + edge cases, and all RAG-server
-  endpoints with mocked Ollama + ChromaDB — 17 tests (cleaner/fetcher tests still optional)
+  endpoints with mocked Ollama + ChromaDB — 17 tests at M2, since grown to 46
+  (eval metrics, streaming edge cases, auth, feedback caps); cleaner/fetcher tests still optional
 - ✅ **GitHub Actions CI**: Android (build + unit test + Spotless + Android Lint) and Python
   (ruff + pytest) jobs in `android-ci.yml`, green on `master`
 - ✅ **Linting/formatting**: Spotless + ktlint and Android Lint (Kotlin); ruff lint + format
@@ -99,8 +102,9 @@ three layers (Android · backend · ML/RAG).*
   partial bubble, and persists to Room once on completion (no per-token writes). Includes a
   **Stop** button that cancels mid-stream and keeps the partial. The buffered `/chat` is kept
   for scripts/eval/tests; shared retrieval/prompt helpers keep the two endpoints DRY.
-- ⬜ **Source citations** — render the `sources` already carried in the stream as tappable
-  chips under each answer (grounded / anti-hallucination story). Server-side data is done.
+- ✅ **Source citations** — the streamed `sources` render as tappable Wikipedia chips under
+  each answer (grounded / anti-hallucination story) and persist with the reply (Room v2 +
+  `MIGRATION_1_2`); feedback records carry them too.
 - ✅ **👍/👎 feedback → preference dataset** — thumbs under each AI reply; `POST /feedback`
   appends `{timestamp, rating, model, query, answer, sources}` to `data/feedback.jsonl`. The
   tap is optimistic (reverts on network failure); the prompt logged is the preceding user
