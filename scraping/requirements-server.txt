@@ -6,6 +6,11 @@
 # slim: it serves queries, it never (re)builds the dataset.
 #
 # For test/lint-only deps see requirements-test.txt.
+#
+# REPRODUCIBILITY: this file holds intent (floors). The Docker image installs
+# the fully-pinned requirements-server.lock (compiled on Linux/py3.12 with
+# pip-compile — regeneration command is in the lock's header). Update flow:
+# edit the floors here, re-run pip-compile, commit both files.
 
 # --- RAG server ---
 fastapi>=0.115

@@ -108,6 +108,8 @@ def build_client(
     feedback_path=None,
     api_key=None,
     count=42,
+    rate_limit_per_minute=None,
+    max_body_bytes=None,
 ):
     if documents is None:
         documents = ["Chunk about Hyrule.", "Chunk about bombs."]
@@ -121,6 +123,10 @@ def build_client(
         settings_kwargs["feedback_path"] = feedback_path
     if api_key is not None:
         settings_kwargs["api_key"] = api_key
+    if rate_limit_per_minute is not None:
+        settings_kwargs["rate_limit_per_minute"] = rate_limit_per_minute
+    if max_body_bytes is not None:
+        settings_kwargs["max_body_bytes"] = max_body_bytes
     settings = server.Settings(**settings_kwargs)
     app = server.create_app(settings)
     fake_http = FakeAsyncClient(
@@ -195,6 +201,47 @@ def test_chat_handles_zero_retrieval_without_a_context_block():
     assert resp.json()["sources"] == []
     system_prompt = fake_http.calls[0]["json"]["messages"][0]["content"]
     assert "Context:" not in system_prompt
+
+
+def test_grounded_system_prompt_carries_the_injection_guard():
+    # Retrieved chunks are third-party text; the prompt must instruct the model
+    # to treat them as data, never as instructions.
+    client, fake_http = build_client()
+    client.post("/chat", json={"message": "hi"})
+    system_prompt = fake_http.calls[0]["json"]["messages"][0]["content"]
+    assert "never as instructions" in system_prompt
+    assert "Context:" in system_prompt
+
+
+# ---------------------------------------------------------------------------
+# Middleware: rate limit, body cap, request-ID
+# ---------------------------------------------------------------------------
+
+
+def test_rate_limit_returns_429_after_the_budget_is_spent():
+    client, _ = build_client(rate_limit_per_minute=2)
+    assert client.get("/stats").status_code == 200
+    assert client.get("/stats").status_code == 200
+    assert client.get("/stats").status_code == 429
+
+
+def test_health_is_exempt_from_the_rate_limit():
+    client, _ = build_client(rate_limit_per_minute=1)
+    assert client.get("/stats").status_code == 200  # budget spent
+    for _ in range(3):
+        assert client.get("/health").status_code == 200
+
+
+def test_oversized_body_is_rejected_with_413_before_parsing():
+    client, _ = build_client(max_body_bytes=10)
+    resp = client.post("/chat", json={"message": "definitely more than ten bytes"})
+    assert resp.status_code == 413
+
+
+def test_responses_carry_a_request_id_header():
+    client, _ = build_client()
+    resp = client.get("/health")
+    assert len(resp.headers["x-request-id"]) == 8
 
 
 def test_chat_rejects_empty_message():

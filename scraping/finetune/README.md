@@ -19,7 +19,7 @@ context**, concisely, in the VideoGameWizard voice.
 | Labels | `llama3.1:8b` writes one (question, grounded answer) per chunk — self-distillation of the target behavior |
 | Split | **1,350 train / 150 val** |
 | Leakage control | every chunk in the retrieval eval set was **excluded** from training — 0 overlap, verified *at prep time*. The eval set was later regenerated after a re-chunking fix, so the guarantee is point-in-time: 1 of the 150 *current* gold chunks also appears as a training context |
-| Format | `messages` (system+user+assistant); the **system message carries the chunk**, using the same system-prompt text as the server. (Known small train/serve delta: the HF training template prepends Llama's date-header lines, which Ollama's serving template omits.) |
+| Format | `messages` (system+user+assistant); the **system message carries the chunk**, using the same system-prompt text as the server. (Known small train/serve deltas: the HF training template prepends Llama's date-header lines, which Ollama's serving template omits; and the server has since appended a prompt-injection-guard sentence to the system prompt as post-training hardening.) |
 | Loss | **assistant-only** (the prompt, including the context, is masked) — the model is graded only on the answer it produces |
 
 Built by `prepare_data.py`; the dataset (`data/train.jsonl`, `data/val.jsonl`) is

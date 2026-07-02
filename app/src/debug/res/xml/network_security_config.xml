@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    DEBUG-ONLY override: permits cleartext HTTP so dev builds can reach the
+    RAG server on the emulator host (10.0.2.2) or a LAN IP without TLS.
+    The main config (src/main/res/xml/) blocks cleartext for release builds.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true" />
+</network-security-config>
