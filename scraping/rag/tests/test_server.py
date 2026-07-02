@@ -333,9 +333,70 @@ def test_chat_stream_rejects_blank_message():
     assert client.post("/chat/stream", json={"message": "   "}).status_code == 422
 
 
+def test_chat_stream_reports_in_stream_ollama_error_line_as_error_event():
+    # Ollama reports mid-generation failures (e.g. OOM, runner crash) as an
+    # {"error": ...} JSON line on the already-open 200 stream — it must surface
+    # as an in-band error, never fall through to a false "done".
+    good = json.dumps({"message": {"content": "Use "}, "done": False})
+    err = json.dumps({"error": "model requires more system memory"})
+    client, _ = build_client(stream_lines=[good, err])
+    resp = client.post("/chat/stream", json={"message": "hi"})
+
+    events = _parse_ndjson(resp.text)
+    assert [e["token"] for e in events if e["type"] == "token"] == ["Use "]
+    assert events[-1]["type"] == "error"
+    assert not any(e["type"] == "done" for e in events)
+
+
+def test_chat_stream_errors_on_a_valid_json_line_of_the_wrong_shape():
+    # Valid JSON that isn't the expected object shape (null, a bare string, a
+    # null message) must surface as an in-band error, not crash the generator.
+    for bad in ("null", '"a string"', json.dumps({"message": None})):
+        client, _ = build_client(stream_lines=[bad])
+        events = _parse_ndjson(client.post("/chat/stream", json={"message": "hi"}).text)
+        assert events[-1]["type"] == "error", f"line {bad!r} did not error in-band"
+
+
+def test_chat_stream_errors_when_upstream_ends_without_done():
+    # EOF before done=true is a truncated answer, not a success.
+    lines = [json.dumps({"message": {"content": "Use "}, "done": False})]
+    client, _ = build_client(stream_lines=lines)
+    events = _parse_ndjson(client.post("/chat/stream", json={"message": "hi"}).text)
+
+    assert [e["token"] for e in events if e["type"] == "token"] == ["Use "]
+    assert events[-1]["type"] == "error"
+
+
 # ---------------------------------------------------------------------------
 # Feedback endpoint (/feedback)
 # ---------------------------------------------------------------------------
+
+
+def test_feedback_rejects_oversized_answer():
+    # Every other user-supplied string is capped; the answer must be too, or the
+    # append-only feedback log becomes a disk-fill vector.
+    client, _ = build_client()
+    payload = {"query": "q", "answer": "a" * (server.MAX_ANSWER_CHARS + 1), "rating": "up"}
+    assert client.post("/feedback", json=payload).status_code == 422
+
+
+def test_feedback_rejects_too_many_or_oversized_sources():
+    client, _ = build_client()
+    too_many = {
+        "query": "q",
+        "answer": "a",
+        "rating": "up",
+        "sources": ["t"] * (server.MAX_FEEDBACK_SOURCES + 1),
+    }
+    assert client.post("/feedback", json=too_many).status_code == 422
+
+    oversized_item = {
+        "query": "q",
+        "answer": "a",
+        "rating": "up",
+        "sources": ["t" * (server.MAX_SOURCE_TITLE_CHARS + 1)],
+    }
+    assert client.post("/feedback", json=oversized_item).status_code == 422
 
 
 def test_feedback_appends_a_jsonl_record(tmp_path):

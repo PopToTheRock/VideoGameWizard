@@ -37,7 +37,7 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Literal
+from typing import Annotated, Any, Literal
 
 import httpx
 from fastapi import APIRouter, Depends, FastAPI, Header, HTTPException, Request
@@ -59,6 +59,12 @@ MAX_MESSAGE_CHARS = 4096
 # Cap conversation history so a long session (or a crafted request) can't blow the
 # model's context window or ship an unbounded payload to Ollama.
 MAX_HISTORY_MESSAGES = 50
+# Feedback payload bounds: answers are model output (longer than user messages,
+# but not unbounded — an uncapped field is a disk-fill vector on the append-only
+# feedback log); sources are short article titles.
+MAX_ANSWER_CHARS = 16384
+MAX_FEEDBACK_SOURCES = 20
+MAX_SOURCE_TITLE_CHARS = 512
 
 _DEFAULT_DATA_DIR = Path(__file__).resolve().parent.parent / "data"
 _DEFAULT_CHROMA_PATH = _DEFAULT_DATA_DIR / "chromadb"
@@ -132,9 +138,11 @@ class FeedbackRequest(BaseModel):
     """A user's thumbs up/down on one answer — a preference signal for later DPO."""
 
     query: str = Field(min_length=1, max_length=MAX_MESSAGE_CHARS)
-    answer: str = Field(min_length=1)
+    answer: str = Field(min_length=1, max_length=MAX_ANSWER_CHARS)
     rating: Literal["up", "down"]
-    sources: list[str] = Field(default_factory=list)
+    sources: list[Annotated[str, Field(max_length=MAX_SOURCE_TITLE_CHARS)]] = Field(
+        default_factory=list, max_length=MAX_FEEDBACK_SOURCES
+    )
 
     @field_validator("query", "answer")
     @classmethod
@@ -291,8 +299,10 @@ async def chat(
         )
         resp.raise_for_status()
     except httpx.HTTPError as exc:
+        # Log the detail; the client gets a generic message (httpx exception
+        # strings include the upstream URL — internal topology).
         log.error("Ollama request failed: %s", exc)
-        raise HTTPException(status_code=502, detail=f"Ollama request failed: {exc}") from exc
+        raise HTTPException(status_code=502, detail="Ollama request failed") from exc
 
     try:
         ai_text = resp.json()["message"]["content"]
@@ -342,6 +352,7 @@ async def chat_stream(
         yield _ndjson({"type": "sources", "sources": sources})
         messages = build_messages(query, documents, payload.history)
 
+        completed = False
         try:
             async with http_client.stream(
                 "POST",
@@ -362,14 +373,33 @@ async def chat_stream(
                             {"type": "error", "message": "Malformed response from Ollama"}
                         )
                         return
+                    if isinstance(chunk, dict) and chunk.get("error"):
+                        # Ollama reports mid-generation failures (OOM, runner crash,
+                        # model unloaded) as an {"error": ...} line on the open 200
+                        # stream — without this branch it would fall through to "done".
+                        log.error("Ollama in-stream error: %s", chunk["error"])
+                        yield _ndjson({"type": "error", "message": "Ollama generation failed"})
+                        return
                     token = chunk.get("message", {}).get("content", "")
                     if token:
                         yield _ndjson({"type": "token", "token": token})
                     if chunk.get("done"):
+                        completed = True
                         break
         except httpx.HTTPError as exc:
             log.error("Ollama stream failed: %s", exc)
-            yield _ndjson({"type": "error", "message": f"Ollama request failed: {exc}"})
+            yield _ndjson({"type": "error", "message": "Ollama request failed"})
+            return
+        except Exception as exc:  # noqa: BLE001 — e.g. a valid-JSON line of the wrong shape
+            log.error("Unexpected error while streaming from Ollama: %s", exc)
+            yield _ndjson({"type": "error", "message": "Malformed response from Ollama"})
+            return
+
+        if not completed:
+            # The upstream stream ended without ever sending done=true: a truncated
+            # answer must not masquerade as a successful one.
+            log.error("Ollama stream ended without a done marker")
+            yield _ndjson({"type": "error", "message": "Response ended unexpectedly"})
             return
 
         log.info("Streamed query: %r | sources: %s", query[:60], sources)
