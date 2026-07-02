@@ -41,24 +41,24 @@ BOILERPLATE_SECTIONS = {
 }
 
 # Matches MediaWiki template fragments like {{cite book}}, {{cite web}}, {{reflist}}, etc.
-_RE_TEMPLATE = re.compile(r'\{\{[^}]*\}\}')
+_RE_TEMPLATE = re.compile(r"\{\{[^}]*\}\}")
 
 # Matches CS1 error/maintenance notices that follow template fragments
-_RE_CS1 = re.compile(r':\s+CS1 maint:[^\n]+')
+_RE_CS1 = re.compile(r":\s+CS1 maint:[^\n]+")
 
 # Matches numbered citation markers like [1], [23], [nb 1], [note 2]
-_RE_CITE = re.compile(r'\[(?:\d+|nb \d+|note \d+)\]')
+_RE_CITE = re.compile(r"\[(?:\d+|nb \d+|note \d+)\]")
 
 # Unicode replacement character (U+FFFD) from encoding errors
-_RE_REPLACEMENT = re.compile(r'\ufffd+')
+_RE_REPLACEMENT = re.compile(r"\ufffd+")
 
 
 def truncate_at_boilerplate(text: str) -> str:
     """Cut the article at the first boilerplate section heading."""
-    lines = text.split('\n')
+    lines = text.split("\n")
     for i, line in enumerate(lines):
         if line.strip() in BOILERPLATE_SECTIONS:
-            return '\n'.join(lines[:i])
+            return "\n".join(lines[:i])
     return text
 
 
@@ -67,23 +67,23 @@ def clean_content(text: str) -> str:
     text = truncate_at_boilerplate(text)
 
     # 2. Remove MediaWiki template remnants and CS1 notices
-    text = _RE_TEMPLATE.sub('', text)
-    text = _RE_CS1.sub('', text)
+    text = _RE_TEMPLATE.sub("", text)
+    text = _RE_CS1.sub("", text)
 
     # 3. Remove citation markers
-    text = _RE_CITE.sub('', text)
+    text = _RE_CITE.sub("", text)
 
     # 4. Remove Unicode replacement characters
-    text = _RE_REPLACEMENT.sub('', text)
+    text = _RE_REPLACEMENT.sub("", text)
 
     # 5. Strip trailing whitespace from each line
-    lines = [line.rstrip() for line in text.split('\n')]
+    lines = [line.rstrip() for line in text.split("\n")]
 
     # 6. Collapse 3+ consecutive blank lines to 2
     cleaned: list[str] = []
     blank_run = 0
     for line in lines:
-        if line == '':
+        if line == "":
             blank_run += 1
             if blank_run <= 2:
                 cleaned.append(line)
@@ -91,7 +91,7 @@ def clean_content(text: str) -> str:
             blank_run = 0
             cleaned.append(line)
 
-    return '\n'.join(cleaned).strip()
+    return "\n".join(cleaned).strip()
 
 
 def main() -> None:
@@ -108,9 +108,10 @@ def main() -> None:
     total = written = skipped = 0
     chars_before = chars_after = 0
 
-    with open(input_path, encoding="utf-8") as in_f, \
-         open(output_path, "w", encoding="utf-8") as out_f:
-
+    with (
+        open(input_path, encoding="utf-8") as in_f,
+        open(output_path, "w", encoding="utf-8") as out_f,
+    ):
         for raw_line in in_f:
             raw_line = raw_line.strip()
             if not raw_line:

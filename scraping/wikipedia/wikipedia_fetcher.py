@@ -18,12 +18,11 @@ import argparse
 import json
 import logging
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
-import requests
-
 import config
+import requests
 
 logging.basicConfig(
     level=logging.DEBUG,
@@ -41,6 +40,7 @@ session.headers.update({"User-Agent": config.USER_AGENT})
 # ---------------------------------------------------------------------------
 # Category enumeration
 # ---------------------------------------------------------------------------
+
 
 def get_category_members(category: str, member_type: str) -> list[dict]:
     """Fetch all members of a category (articles or subcategories)."""
@@ -110,17 +110,18 @@ def collect_article_ids(
 # Article fetching
 # ---------------------------------------------------------------------------
 
+
 def fetch_articles_batch(page_ids: list[int]) -> list[dict]:
     """Fetch plain-text content for a batch of page IDs via the API."""
     params = {
         "action": "query",
         "pageids": "|".join(str(p) for p in page_ids),
         "prop": "extracts|categories|pageprops",
-        "explaintext": "1",        # Returns clean plain text (no markup)
+        "explaintext": "1",  # Returns clean plain text (no markup)
         "exsectionformat": "plain",
-        "exlimit": "max",          # Return extracts for all pages in the batch
+        "exlimit": "max",  # Return extracts for all pages in the batch
         "cllimit": 20,
-        "redirects": "1",          # Resolve redirects automatically
+        "redirects": "1",  # Resolve redirects automatically
         "format": "json",
     }
     response = session.get(API_URL, params=params, timeout=60)
@@ -149,10 +150,7 @@ def build_item(page: dict) -> dict | None:
         log.debug(f"  SKIP (short extract, {len(content)} chars): {title}")
         return None
 
-    categories = [
-        c["title"].removeprefix("Category:")
-        for c in page.get("categories", [])
-    ]
+    categories = [c["title"].removeprefix("Category:") for c in page.get("categories", [])]
 
     return {
         "source": "wikipedia",
@@ -160,13 +158,14 @@ def build_item(page: dict) -> dict | None:
         "url": f"https://en.wikipedia.org/wiki/{title.replace(' ', '_')}",
         "content": content,
         "categories": categories,
-        "scraped_at": datetime.now(timezone.utc).isoformat(),
+        "scraped_at": datetime.now(UTC).isoformat(),
     }
 
 
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
+
 
 def main(dry_run: bool = False, limit: int | None = None) -> None:
     log.info("Collecting article IDs from seed categories...")

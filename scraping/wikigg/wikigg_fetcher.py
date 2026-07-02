@@ -20,12 +20,11 @@ import argparse
 import json
 import logging
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
-import requests
-
 import config
+import requests
 
 logging.basicConfig(
     level=logging.INFO,
@@ -41,6 +40,7 @@ session.headers.update({"User-Agent": config.USER_AGENT})
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def api_url(wiki: str) -> str:
     return f"https://{wiki}.wiki.gg/w/api.php"
@@ -63,13 +63,14 @@ def wiki_exists(wiki: str) -> bool:
 # Article enumeration
 # ---------------------------------------------------------------------------
 
+
 def get_all_page_ids(wiki: str) -> list[int]:
     """Enumerate all main-namespace article IDs for a wiki."""
     page_ids: list[int] = []
     params = {
         "action": "query",
         "list": "allpages",
-        "apnamespace": 0,       # Main namespace only
+        "apnamespace": 0,  # Main namespace only
         "apfilterredir": "nonredirects",
         "aplimit": 500,
         "format": "json",
@@ -92,6 +93,7 @@ def get_all_page_ids(wiki: str) -> list[int]:
 # Article fetching
 # ---------------------------------------------------------------------------
 
+
 def fetch_article(wiki: str, page_id: int) -> dict:
     """Fetch plain-text content for a single article."""
     params = {
@@ -100,7 +102,7 @@ def fetch_article(wiki: str, page_id: int) -> dict:
         "prop": "extracts|categories|pageprops",
         "explaintext": "1",
         "exsectionformat": "plain",
-        "exlimit": "max",       # API enforces 1 for full articles — we fetch one at a time
+        "exlimit": "max",  # API enforces 1 for full articles — we fetch one at a time
         "cllimit": 20,
         "redirects": "1",
         "format": "json",
@@ -129,10 +131,7 @@ def build_item(page: dict, wiki: str) -> dict | None:
         log.debug(f"  SKIP (short, {len(content)} chars): {title}")
         return None
 
-    categories = [
-        c["title"].removeprefix("Category:")
-        for c in page.get("categories", [])
-    ]
+    categories = [c["title"].removeprefix("Category:") for c in page.get("categories", [])]
 
     return {
         "source": f"wikigg:{wiki}",
@@ -141,13 +140,14 @@ def build_item(page: dict, wiki: str) -> dict | None:
         "url": f"https://{wiki}.wiki.gg/wiki/{title.replace(' ', '_')}",
         "content": content,
         "categories": categories,
-        "scraped_at": datetime.now(timezone.utc).isoformat(),
+        "scraped_at": datetime.now(UTC).isoformat(),
     }
 
 
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
+
 
 def main(dry_run: bool = False, limit: int | None = None, wikis: list[str] | None = None) -> None:
     target_wikis = wikis or config.TARGET_WIKIS
