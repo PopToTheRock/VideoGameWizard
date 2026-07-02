@@ -1,0 +1,918 @@
+{
+  "summary": {
+    "n": 150,
+    "base_model": "llama3.1:8b",
+    "finetuned_model": "vgw-rag:8b",
+    "judge_model": "qwen2.5:7b",
+    "seed": 42,
+    "tally": {
+      "finetuned": 67,
+      "base": 49,
+      "tie": 34
+    },
+    "ft_win_rate_overall": 0.447,
+    "ft_win_rate_excluding_ties": 0.578
+  },
+  "results": [
+    {
+      "question": "What platforms was Blackguards 2 initially released on?",
+      "outcome": "tie",
+      "reason": "Both answers are identical and faithful to the context.",
+      "ft_was_a": true
+    },
+    {
+      "question": "What was the release date of Civil War General?",
+      "outcome": "tie",
+      "reason": "Both answers are concise and faithful to the context.",
+      "ft_was_a": false
+    },
+    {
+      "question": "Did Akira Toriyama have a direct role in designing Android 21's story?",
+      "outcome": "base",
+      "reason": "More concise and directly addresses the question.",
+      "ft_was_a": true
+    },
+    {
+      "question": "How many lots are in Del Sol Valley in The Sims 4 expansion pack Get Famous?",
+      "outcome": "finetuned",
+      "reason": "More concise",
+      "ft_was_a": false
+    },
+    {
+      "question": "How do human characters gain new active and passive skills in Shin Megami Tensei: Devil Survivor?",
+      "outcome": "finetuned",
+      "reason": "Answer A is more concise.",
+      "ft_was_a": true
+    },
+    {
+      "question": "What new courses are included in Microsoft Golf 1999 Edition?",
+      "outcome": "base",
+      "reason": "Answer A includes all courses mentioned in the context.",
+      "ft_was_a": false
+    },
+    {
+      "question": "What is the relationship between Monster Hunter Portable 3rd and Monster Hunter Tri?",
+      "outcome": "finetuned",
+      "reason": "A is more concise and directly matches the reference.",
+      "ft_was_a": true
+    },
+    {
+      "question": "What is the current status of the original Unlight browser game?",
+      "outcome": "base",
+      "reason": "Answer A is more concise and directly addresses the current status.",
+      "ft_was_a": false
+    },
+    {
+      "question": "What are some notable features of the game Dream Chronicles 2: The Eternal Maze?",
+      "outcome": "base",
+      "reason": "B provides more details and is more faithful to the context.",
+      "ft_was_a": true
+    },
+    {
+      "question": "What is the reason Xiaoyao loses his memory of the island encounter?",
+      "outcome": "tie",
+      "reason": "Both answers are concise and faithful to the context.",
+      "ft_was_a": false
+    },
+    {
+      "question": "What is the primary purpose of a Seed ship?",
+      "outcome": "tie",
+      "reason": "Both answers are identical and faithful to the context.",
+      "ft_was_a": true
+    },
+    {
+      "question": "What kind of gameplay modes are available in EyeToy: Groove?",
+      "outcome": "base",
+      "reason": "Answer A includes all relevant gameplay modes from the context.",
+      "ft_was_a": false
+    },
+    {
+      "question": "What type of gameplay does Lunar: The Silver Star feature?",
+      "outcome": "finetuned",
+      "reason": "A includes the relevant details about characters and environments.",
+      "ft_was_a": true
+    },
+    {
+      "question": "What was the highest score given to the Commodore 64 conversion of Head over Heels?",
+      "outcome": "finetuned",
+      "reason": "more concise",
+      "ft_was_a": false
+    },
+    {
+      "question": "What is the storyline of Z: Steel Soldiers similar to?",
+      "outcome": "finetuned",
+      "reason": "A is more faithful to the context and reference.",
+      "ft_was_a": true
+    },
+    {
+      "question": "Why did the PlayStation 2 version of Need for Speed: Hot Pursuit 2 receive generally favorable reviews?",
+      "outcome": "finetuned",
+      "reason": "B is more concise and directly addresses the question.",
+      "ft_was_a": false
+    },
+    {
+      "question": "What happens when a player's health reaches zero in Wizard101?",
+      "outcome": "finetuned",
+      "reason": "Answer A is more concise and directly addresses the question without unnecessary information.",
+      "ft_was_a": true
+    },
+    {
+      "question": "What is the top flying speed of Gosaurer?",
+      "outcome": "tie",
+      "reason": "Both answers are concise and faithful to the context.",
+      "ft_was_a": false
+    },
+    {
+      "question": "What is the final goal of Nikandreos in the game Apotheon?",
+      "outcome": "finetuned",
+      "reason": "Answer A is more concise and directly matches the reference.",
+      "ft_was_a": true
+    },
+    {
+      "question": "What is Trevor Belmont's height according to the Bradygames Official Guide?",
+      "outcome": "base",
+      "reason": "Answer A includes the source of information.",
+      "ft_was_a": false
+    },
+    {
+      "question": "What is the platform on which Global Defence Force Tactics was released?",
+      "outcome": "tie",
+      "reason": "Both answers are identical and faithful to the context.",
+      "ft_was_a": true
+    },
+    {
+      "question": "What is a key difference in the combat system of Silent Hill 4 compared to other games in the series?",
+      "outcome": "base",
+      "reason": "Answer A uses the exact wording from the context.",
+      "ft_was_a": false
+    },
+    {
+      "question": "Does Genshin Impact censor certain words in its in-game chat?",
+      "outcome": "finetuned",
+      "reason": "Answer A is more concise.",
+      "ft_was_a": true
+    },
+    {
+      "question": "Who published Wanted: Dead for PlayStation 4, PlayStation 5, Windows, Xbox One, and Xbox Series X/S?",
+      "outcome": "base",
+      "reason": "Answer A directly addresses the question while B provides irrelevant information.",
+      "ft_was_a": false
+    },
+    {
+      "question": "In what game can I play as Aloy in the PlayStation 4 version?",
+      "outcome": "tie",
+      "reason": "Both answers are identical and faithful to the context.",
+      "ft_was_a": true
+    },
+    {
+      "question": "What is the reason behind the Orc invasion of the Haven city Voron Peak?",
+      "outcome": "base",
+      "reason": "A is more concise and directly states the cause without unnecessary details.",
+      "ft_was_a": false
+    },
+    {
+      "question": "What was the original concept for Claire Redfield's character in Resident Evil 2?",
+      "outcome": "finetuned",
+      "reason": "more faithful to the exact wording in the context",
+      "ft_was_a": true
+    },
+    {
+      "question": "How can I unlock the cue sticks in Q-Ball: Billiards Master?",
+      "outcome": "base",
+      "reason": "Answer A includes the necessary padding.",
+      "ft_was_a": false
+    },
+    {
+      "question": "What are some examples of Bird Game video games available on Steam?",
+      "outcome": "finetuned",
+      "reason": "Answer A is more concise while still complete.",
+      "ft_was_a": true
+    },
+    {
+      "question": "What is the purpose of Maxwell's radio in the game Don't Starve?",
+      "outcome": "finetuned",
+      "reason": "Answer B is more concise and directly addresses the purpose of the radio.",
+      "ft_was_a": false
+    },
+    {
+      "question": "What was the main inspiration behind the combat system in Mew-Genics?",
+      "outcome": "base",
+      "reason": "more directly matches the reference answer",
+      "ft_was_a": true
+    },
+    {
+      "question": "Can I create a henchman on the Xbox 360 without having a separate account?",
+      "outcome": "finetuned",
+      "reason": "Answer B is more concise.",
+      "ft_was_a": false
+    },
+    {
+      "question": "What was the reception of the Saturn port of Criticom?",
+      "outcome": "finetuned",
+      "reason": "Answer B includes unnecessary details not requested in the question.",
+      "ft_was_a": true
+    },
+    {
+      "question": "What game engine was used to develop Trails of Cold Steel IV?",
+      "outcome": "base",
+      "reason": "More concise.",
+      "ft_was_a": false
+    },
+    {
+      "question": "How many support-only characters are available in Naruto: Ultimate Ninja Storm?",
+      "outcome": "base",
+      "reason": "more concise",
+      "ft_was_a": true
+    },
+    {
+      "question": "What awards and nominations did Tinykin receive in 2022?",
+      "outcome": "base",
+      "reason": "A is more concise and directly addresses the question.",
+      "ft_was_a": false
+    },
+    {
+      "question": "What are the two main roles that the player assumes in Law & Order: Dead on the Money?",
+      "outcome": "finetuned",
+      "reason": "Answer A is more concise.",
+      "ft_was_a": true
+    },
+    {
+      "question": "What features are included in the PlayStation 5 version of My First Gran Turismo?",
+      "outcome": "tie",
+      "reason": "Both answers are identical and faithful to the context.",
+      "ft_was_a": false
+    },
+    {
+      "question": "What is the codename adopted by Big Boss in Metal Gear Solid V: The Phantom Pain?",
+      "outcome": "finetuned",
+      "reason": "Answer A is more concise.",
+      "ft_was_a": true
+    },
+    {
+      "question": "What is the purpose of New Light's research on the island in Desolate?",
+      "outcome": "finetuned",
+      "reason": "B provides a more detailed explanation consistent with the context.",
+      "ft_was_a": false
+    },
+    {
+      "question": "What is the current market value of original Mortal Kombat arcade machines?",
+      "outcome": "base",
+      "reason": "Answer B is more concise and directly uses the context without referencing Forbes.",
+      "ft_was_a": true
+    },
+    {
+      "question": "What was the initial release date for Monochrome Mobius: Rights and Wrongs Forgotten in Japan?",
+      "outcome": "finetuned",
+      "reason": "more faithful to the context",
+      "ft_was_a": false
+    },
+    {
+      "question": "Who programmed the Atari VCS port of Night Driver?",
+      "outcome": "tie",
+      "reason": "Both answers are identical.",
+      "ft_was_a": true
+    },
+    {
+      "question": "What was the main criticism of NASCAR 99's graphics and sound effects compared to NASCAR '98?",
+      "outcome": "tie",
+      "reason": "Both answers are concise and faithful to the context.",
+      "ft_was_a": false
+    },
+    {
+      "question": "What is the setting of the game Armour-Geddon?",
+      "outcome": "tie",
+      "reason": "Both answers are identical and faithful to the context.",
+      "ft_was_a": true
+    },
+    {
+      "question": "What locations can the party explore in Curse of the Azure Bonds?",
+      "outcome": "finetuned",
+      "reason": "Answer B is more concise and directly addresses the question without unnecessary details.",
+      "ft_was_a": false
+    },
+    {
+      "question": "What was Kratos' motivation for killing Ares in God of War (2005)?",
+      "outcome": "finetuned",
+      "reason": "Answer A is more concise.",
+      "ft_was_a": true
+    },
+    {
+      "question": "What are the three playable cultures in Age of Mythology?",
+      "outcome": "finetuned",
+      "reason": "More concise.",
+      "ft_was_a": false
+    },
+    {
+      "question": "How can I expand my faction's territory in Rome: Total War?",
+      "outcome": "base",
+      "reason": "Answer B is more concise and directly matches the context and reference.",
+      "ft_was_a": true
+    },
+    {
+      "question": "How many tracks needed remixing for the Persona 2: Innocent Sin remake?",
+      "outcome": "tie",
+      "reason": "Both answers are concise and faithful to the context.",
+      "ft_was_a": false
+    },
+    {
+      "question": "How do the different types of runs affect a ball carrier's performance in Strat-O-Matic Football?",
+      "outcome": "base",
+      "reason": "Answer B is more concise and directly addresses the question with the relevant information from the context.",
+      "ft_was_a": true
+    },
+    {
+      "question": "Who was the main story writer for Sonic Adventure 2?",
+      "outcome": "tie",
+      "reason": "Both answers are concise and faithful to the reference.",
+      "ft_was_a": false
+    },
+    {
+      "question": "What platforms will Darkest Dungeon II be available on initially?",
+      "outcome": "finetuned",
+      "reason": "Both answers are correct, but B includes an unnecessary comma.",
+      "ft_was_a": true
+    },
+    {
+      "question": "What is the main story of Tenebris Somnia?",
+      "outcome": "finetuned",
+      "reason": "more concise and directly addresses the question",
+      "ft_was_a": false
+    },
+    {
+      "question": "How does a player's rank increase in World in Conflict?",
+      "outcome": "finetuned",
+      "reason": "Answer A is more concise.",
+      "ft_was_a": true
+    },
+    {
+      "question": "What was the average score of the PC release of Tomb Raider: The Last Revelation?",
+      "outcome": "tie",
+      "reason": "Both answers are equally faithful and concise.",
+      "ft_was_a": false
+    },
+    {
+      "question": "What is the true path that Hiroki chooses after defeating the demon in his form?",
+      "outcome": "finetuned",
+      "reason": "Answer A is more grounded and concise, directly addressing the question.",
+      "ft_was_a": true
+    },
+    {
+      "question": "What was the main reason Remedy couldn't work on an Alan Wake sequel initially?",
+      "outcome": "base",
+      "reason": "A is more concise and directly states the main reason.",
+      "ft_was_a": false
+    },
+    {
+      "question": "What cultural influence is said to be part of Galar's culture in Pok\u00e9mon Sword and Shield?",
+      "outcome": "tie",
+      "reason": "Both answers are identical and faithful to the context.",
+      "ft_was_a": true
+    },
+    {
+      "question": "What is the purpose of the Kustera in the game Secret of the Stars?",
+      "outcome": "finetuned",
+      "reason": "Answer B is more concise.",
+      "ft_was_a": false
+    },
+    {
+      "question": "What is the release date of Battlefleet Gothic: Armada 2?",
+      "outcome": "base",
+      "reason": "more directly matches the context",
+      "ft_was_a": true
+    },
+    {
+      "question": "What did GameSpot think of the stealth sections in Marvel's Spider-Man?",
+      "outcome": "base",
+      "reason": "Answer A is more faithful to the context and reference.",
+      "ft_was_a": false
+    },
+    {
+      "question": "What were the notable criticisms of the game's controls in the Sega Genesis version?",
+      "outcome": "base",
+      "reason": "B includes the exact quote and version mentioned in the context.",
+      "ft_was_a": true
+    },
+    {
+      "question": "How did Mikhail 'Kestrel' Loskov get into a coma?",
+      "outcome": "base",
+      "reason": "More concise.",
+      "ft_was_a": false
+    },
+    {
+      "question": "What is the name of the sentient combat implant that Redline receives?",
+      "outcome": "tie",
+      "reason": "Both answers are concise and faithful to the context.",
+      "ft_was_a": true
+    },
+    {
+      "question": "What is the power level of Buffaloman (possessed by Satan version) in the Kinnikuman Muscle Grand Prix?",
+      "outcome": "tie",
+      "reason": "Both answers are identical and faithful to the context.",
+      "ft_was_a": false
+    },
+    {
+      "question": "What is the name of the video game composer who officially licensed the compositions of Chrono Trigger?",
+      "outcome": "tie",
+      "reason": "Both answers are identical and faithful to the context.",
+      "ft_was_a": true
+    },
+    {
+      "question": "Why did PlatinumGames' original enemy designs for Scalebound get rejected by Hideki Kamiya?",
+      "outcome": "finetuned",
+      "reason": "Answer B is more concise.",
+      "ft_was_a": false
+    },
+    {
+      "question": "What are the two new garbage types introduced in Puyo Puyo 2?",
+      "outcome": "finetuned",
+      "reason": "Answer A is more concise.",
+      "ft_was_a": true
+    },
+    {
+      "question": "What changes were made to the equipment system in Shin Megami Tensei III: Nocturne?",
+      "outcome": "base",
+      "reason": "Answer A includes the full reference answer and is more concise.",
+      "ft_was_a": false
+    },
+    {
+      "question": "How does the alchemy system in Atelier Sophie 2 work in terms of synthesizing items?",
+      "outcome": "finetuned",
+      "reason": "Answer A is more concise and directly matches the reference.",
+      "ft_was_a": true
+    },
+    {
+      "question": "Who is the first female footballer to appear on the cover of a FIFA game?",
+      "outcome": "base",
+      "reason": "Answer A is more concise and directly states the information without unnecessary details.",
+      "ft_was_a": false
+    },
+    {
+      "question": "What is the primary way to control movement in Kirby Air Ride?",
+      "outcome": "tie",
+      "reason": "Both answers are concise and faithful to the context.",
+      "ft_was_a": true
+    },
+    {
+      "question": "What aspect ratio does Star Fox Adventures support if the console is connected to a compatible TV?",
+      "outcome": "tie",
+      "reason": "Both answers are concise and faithful to the context.",
+      "ft_was_a": false
+    },
+    {
+      "question": "What is the effect of the drug Joy on the power of attacking moves in LISA: The Painful?",
+      "outcome": "finetuned",
+      "reason": "Answer A is more concise.",
+      "ft_was_a": true
+    },
+    {
+      "question": "When did the first season of The Dragon Prince premiere?",
+      "outcome": "tie",
+      "reason": "Both answers are identical and faithful to the context.",
+      "ft_was_a": false
+    },
+    {
+      "question": "What is the fighting style of Rufus in Street Fighter?",
+      "outcome": "base",
+      "reason": "B includes the key details from the reference and adds the contrast to heavier, slower characters.",
+      "ft_was_a": true
+    },
+    {
+      "question": "In Advance Wars 1+2: Re-Boot Camp, how do units move through Wood terrain?",
+      "outcome": "tie",
+      "reason": "Both answers are concise and faithful to the context.",
+      "ft_was_a": false
+    },
+    {
+      "question": "What kind of rewards can players receive from rescuing wise men in Black Tiger?",
+      "outcome": "finetuned",
+      "reason": "Answer A is more concise and directly matches the reference.",
+      "ft_was_a": true
+    },
+    {
+      "question": "What features of a vehicle can be customized in Autoduel?",
+      "outcome": "finetuned",
+      "reason": "More concise and directly matches the context.",
+      "ft_was_a": false
+    },
+    {
+      "question": "In Dream Chronicles: The Chosen Child, how do players travel between different areas?",
+      "outcome": "tie",
+      "reason": "Both answers are concise and faithful to the context.",
+      "ft_was_a": true
+    },
+    {
+      "question": "What did the reviewers think of the graphics and lighting effects in Fatal Frame: Maiden of Black Water?",
+      "outcome": "finetuned",
+      "reason": "More concise and faithful to the context.",
+      "ft_was_a": false
+    },
+    {
+      "question": "What are some key features of a typical Real-time strategy game?",
+      "outcome": "finetuned",
+      "reason": "Answer A is more concise and directly matches the reference answer.",
+      "ft_was_a": true
+    },
+    {
+      "question": "Will the data breach affect the development of Marvel's Wolverine?",
+      "outcome": "tie",
+      "reason": "Both answers are equally faithful and concise.",
+      "ft_was_a": false
+    },
+    {
+      "question": "Can I buy Omen as a separate character in Killer Instinct?",
+      "outcome": "tie",
+      "reason": "Both answers are identical and faithful to the context.",
+      "ft_was_a": true
+    },
+    {
+      "question": "How did the multiplayer designers of The Last of Us handle the slower pace of the game in a multiplayer environment?",
+      "outcome": "finetuned",
+      "reason": "Answer B is more concise and directly matches the context.",
+      "ft_was_a": false
+    },
+    {
+      "question": "What physical versions of Persona 3 Portable will be released by Limited Run Games?",
+      "outcome": "base",
+      "reason": "More concise while still complete.",
+      "ft_was_a": true
+    },
+    {
+      "question": "Who are the main designers behind the video game Aquaria?",
+      "outcome": "base",
+      "reason": "A is more concise.",
+      "ft_was_a": false
+    },
+    {
+      "question": "What award did the My Talking Tom app win at the 2014 Tabby Awards?",
+      "outcome": "tie",
+      "reason": "Both answers are identical and faithful to the context.",
+      "ft_was_a": true
+    },
+    {
+      "question": "What is the gameplay style of The Nightmare Before Christmas: The Pumpkin King?",
+      "outcome": "finetuned",
+      "reason": "Answer B is more concise and direct.",
+      "ft_was_a": false
+    },
+    {
+      "question": "What was Devin Moore's occupation before he enlisted in the U.S. Air Force?",
+      "outcome": "finetuned",
+      "reason": "A is more directly grounded in the context and concise.",
+      "ft_was_a": true
+    },
+    {
+      "question": "Which teams were included in IHF Handball Challenge 14?",
+      "outcome": "base",
+      "reason": "Answer A is slightly more concise.",
+      "ft_was_a": false
+    },
+    {
+      "question": "What are the differences between the aliens in The Sims 4 and previous games?",
+      "outcome": "base",
+      "reason": "B provides a clearer summary of the differences and is more concise.",
+      "ft_was_a": true
+    },
+    {
+      "question": "What is the gameplay ethos of The Forever Winter?",
+      "outcome": "base",
+      "reason": "Answer A is more concise.",
+      "ft_was_a": false
+    },
+    {
+      "question": "What consoles was FIFA Football 2005 released on?",
+      "outcome": "finetuned",
+      "reason": "Answer A is more concise.",
+      "ft_was_a": true
+    },
+    {
+      "question": "When was the development of Fallout 4: Nuka-World confirmed?",
+      "outcome": "base",
+      "reason": "A includes the timeframe from the context.",
+      "ft_was_a": false
+    },
+    {
+      "question": "What is Kumi Tanioka's current work arrangement?",
+      "outcome": "base",
+      "reason": "more concise and directly matches the context",
+      "ft_was_a": true
+    },
+    {
+      "question": "What was the main focus of the gameplay in Star Wars: Empire at War?",
+      "outcome": "finetuned",
+      "reason": "B includes the key focus and an additional relevant detail.",
+      "ft_was_a": false
+    },
+    {
+      "question": "How do players counter the effects of Fractures in Pantheon?",
+      "outcome": "finetuned",
+      "reason": "Answer A is more concise.",
+      "ft_was_a": true
+    },
+    {
+      "question": "What happens to Megatron after he is defeated by Optimus?",
+      "outcome": "base",
+      "reason": "A matches the context more directly.",
+      "ft_was_a": false
+    },
+    {
+      "question": "What graphics engine was introduced in Emergency 5?",
+      "outcome": "finetuned",
+      "reason": "Answer A is more concise.",
+      "ft_was_a": true
+    },
+    {
+      "question": "How do points work in Al Unser Jr.'s Turbo Racing?",
+      "outcome": "finetuned",
+      "reason": "Answer B omits set-up points but is more concise.",
+      "ft_was_a": false
+    },
+    {
+      "question": "When did Ironclad Games start developing Sins of a Solar Empire II?",
+      "outcome": "tie",
+      "reason": "Both answers are concise and faithful to the context.",
+      "ft_was_a": true
+    },
+    {
+      "question": "What characters are available to play in Chocobo Racing from the start?",
+      "outcome": "finetuned",
+      "reason": "More concise without losing information.",
+      "ft_was_a": false
+    },
+    {
+      "question": "What was the sales performance of Bayonetta Origins: Cereza and the Lost Demon in Japan?",
+      "outcome": "tie",
+      "reason": "Both answers are identical and faithful to the context.",
+      "ft_was_a": true
+    },
+    {
+      "question": "Is the Sega version of It Came from the Desert a complete game?",
+      "outcome": "finetuned",
+      "reason": "B is more concise and accurate.",
+      "ft_was_a": false
+    },
+    {
+      "question": "What is the main objective of the Game Boy version of Bram Stoker's Dracula?",
+      "outcome": "base",
+      "reason": "includes the player controlling Jonathan Harker, which is more precise",
+      "ft_was_a": true
+    },
+    {
+      "question": "Who developed the game Slipways?",
+      "outcome": "tie",
+      "reason": "Both answers are concise and faithful to the context.",
+      "ft_was_a": false
+    },
+    {
+      "question": "What is the main difference between a real-time strategy (RTS) game and a real-time tactics (RTT) game?",
+      "outcome": "base",
+      "reason": "Answer B directly addresses the main difference and provides a concise comparison between RTS and RTT games, aligning with the reference answer.",
+      "ft_was_a": true
+    },
+    {
+      "question": "How does character creation affect gameplay in Stygian: Reign of the Old Ones?",
+      "outcome": "finetuned",
+      "reason": "Answer B is more concise and directly addresses the question without unnecessary details.",
+      "ft_was_a": false
+    },
+    {
+      "question": "What was the first game to be released by Capstone?",
+      "outcome": "base",
+      "reason": "directly states the answer while A provides irrelevant information",
+      "ft_was_a": true
+    },
+    {
+      "question": "What was the initial sales performance of the Neo Geo CD version of Voltage Fighter Gowcaizer?",
+      "outcome": "tie",
+      "reason": "Both answers are identical and faithful to the context.",
+      "ft_was_a": false
+    },
+    {
+      "question": "What were some of the graphical problems experienced in Dark Cloud?",
+      "outcome": "base",
+      "reason": "B is more concise and directly matches the context.",
+      "ft_was_a": true
+    },
+    {
+      "question": "What was Rockstar Games' official stance on the 'Hot Coffee' minigame?",
+      "outcome": "tie",
+      "reason": "Both answers are concise and faithful to the context.",
+      "ft_was_a": false
+    },
+    {
+      "question": "What continent is the story of Fire Emblem: The Blazing Blade set on?",
+      "outcome": "tie",
+      "reason": "Both answers are concise and faithful to the context.",
+      "ft_was_a": true
+    },
+    {
+      "question": "What are the differences between Group Server and Tournament Server in Terra Est Quaestuosa?",
+      "outcome": "finetuned",
+      "reason": "Answer B is more concise and directly addresses the differences without unnecessary details.",
+      "ft_was_a": false
+    },
+    {
+      "question": "What is the name of the voice actress who voices Sniper Wolf in the English version of the Metal Gear series?",
+      "outcome": "tie",
+      "reason": "Both answers are identical and faithful to the reference.",
+      "ft_was_a": true
+    },
+    {
+      "question": "What happened to Earthblade's release plans after the initial announcement at The Game Awards 2022?",
+      "outcome": "base",
+      "reason": "Answer A is more concise and directly addresses the question.",
+      "ft_was_a": false
+    },
+    {
+      "question": "What was the original control scheme for Donkey Kong: Barrel Blast?",
+      "outcome": "finetuned",
+      "reason": "Answer A is more concise and directly matches the context.",
+      "ft_was_a": true
+    },
+    {
+      "question": "How did Naughty Dog approach the representation of LGBTQ characters in The Last of Us Part II?",
+      "outcome": "finetuned",
+      "reason": "Answer B is more concise and directly addresses the reference answer without unnecessary details.",
+      "ft_was_a": false
+    },
+    {
+      "question": "What was the primary criticism of Myth III: The Wolf Age's online multiplayer mode?",
+      "outcome": "base",
+      "reason": "Answer B is more concise and directly matches the reference.",
+      "ft_was_a": true
+    },
+    {
+      "question": "What is the main difference between the Game Boy and PC/PlayStation versions of Planet of the Apes?",
+      "outcome": "base",
+      "reason": "Answer A is more concise and directly addresses the main difference.",
+      "ft_was_a": false
+    },
+    {
+      "question": "What is the gameplay style of the SNES version of Aretha?",
+      "outcome": "finetuned",
+      "reason": "Answer A is more concise.",
+      "ft_was_a": true
+    },
+    {
+      "question": "What are the different types of Elixirs available in Zombies mode in Call of Duty: Black Ops 4?",
+      "outcome": "finetuned",
+      "reason": "Answer B matches the reference and is more concise.",
+      "ft_was_a": false
+    },
+    {
+      "question": "What motivates Achievers in a game?",
+      "outcome": "finetuned",
+      "reason": "Answer A is more concise.",
+      "ft_was_a": true
+    },
+    {
+      "question": "What is the fighting style that Yuri employs in the Art of Fighting series?",
+      "outcome": "finetuned",
+      "reason": "Answer B is more concise.",
+      "ft_was_a": false
+    },
+    {
+      "question": "What is the relationship between Mona Sax and Angelo Punchinello?",
+      "outcome": "finetuned",
+      "reason": "A is more concise.",
+      "ft_was_a": true
+    },
+    {
+      "question": "What is the main difference between Super Street Fighter II Turbo and Hyper Street Fighter II: The Anniversary Edition?",
+      "outcome": "base",
+      "reason": "Answer A is more concise and directly addresses the main difference.",
+      "ft_was_a": false
+    },
+    {
+      "question": "How do I move a box in Sokoban?",
+      "outcome": "finetuned",
+      "reason": "Answer A is more concise.",
+      "ft_was_a": true
+    },
+    {
+      "question": "How did the success of Dead or Alive affect Tecmo's Ninja Gaiden series?",
+      "outcome": "finetuned",
+      "reason": "Answer B is more concise and directly addresses the question without unnecessary details.",
+      "ft_was_a": false
+    },
+    {
+      "question": "Will the 2013 remake of Dragon Quest VII be released outside of Japan?",
+      "outcome": "finetuned",
+      "reason": "More concise and directly answers the question.",
+      "ft_was_a": true
+    },
+    {
+      "question": "What did reviewers think of the battle system in Super Mario RPG?",
+      "outcome": "base",
+      "reason": "A directly matches the context and reference.",
+      "ft_was_a": false
+    },
+    {
+      "question": "Was The Room Pocket a full version of the game or a free-to-play version with in-app purchases?",
+      "outcome": "base",
+      "reason": "More concise and directly matches the reference answer.",
+      "ft_was_a": true
+    },
+    {
+      "question": "What was Gerson's role in the war against humans in Undertale?",
+      "outcome": "finetuned",
+      "reason": "Answer B matches the reference and is more concise.",
+      "ft_was_a": false
+    },
+    {
+      "question": "What type of game is Dragon Quest Monsters: The Dark Prince, in terms of its gameplay style?",
+      "outcome": "base",
+      "reason": "More faithful to the context and concise.",
+      "ft_was_a": true
+    },
+    {
+      "question": "What is the reason for the removal of multiplayer support in the digitally re-released version of Vangers?",
+      "outcome": "tie",
+      "reason": "Both answers convey the same key information concisely.",
+      "ft_was_a": false
+    },
+    {
+      "question": "Which women's national teams are included in EA Sports FC 25?",
+      "outcome": "finetuned",
+      "reason": "Answer A is more concise and directly addresses the question.",
+      "ft_was_a": true
+    },
+    {
+      "question": "What happens when you collect all three secret statues in Black & White 2: Battle of the Gods?",
+      "outcome": "finetuned",
+      "reason": "B includes the key details and the survival aspect, which A omits.",
+      "ft_was_a": false
+    },
+    {
+      "question": "Why did Square Enix decide to pursue a Final Fantasy VII Remake after the development of Final Fantasy XIII and its sequels?",
+      "outcome": "finetuned",
+      "reason": "Answer A is more concise.",
+      "ft_was_a": true
+    },
+    {
+      "question": "How does the gameplay of Puzzle Bobble 3 differ from previous titles in the series?",
+      "outcome": "base",
+      "reason": "Answer A is more grounded and faithful to the context and reference.",
+      "ft_was_a": false
+    },
+    {
+      "question": "How do combat actions in Star Wars: Knights of the Old Republic work?",
+      "outcome": "base",
+      "reason": "B provides the additional detail about the menu access, matching the context more closely.",
+      "ft_was_a": true
+    },
+    {
+      "question": "What is the objective of the game Fright Night?",
+      "outcome": "finetuned",
+      "reason": "Answer B is more concise and directly matches the context.",
+      "ft_was_a": false
+    },
+    {
+      "question": "What is the setting of the story in Final Fantasy IV Interlude?",
+      "outcome": "finetuned",
+      "reason": "A is more concise and directly answers the question.",
+      "ft_was_a": true
+    },
+    {
+      "question": "Will there be any more Dissidia games?",
+      "outcome": "base",
+      "reason": "More concise and directly quotes Nomura.",
+      "ft_was_a": false
+    },
+    {
+      "question": "What is the relationship between Raidou and Ayame in the Dead or Alive series?",
+      "outcome": "finetuned",
+      "reason": "Answer A is more concise and directly matches the reference.",
+      "ft_was_a": true
+    },
+    {
+      "question": "What is the source of the imbalance of souls entering the Netherworld in The First Berserker: Khazan?",
+      "outcome": "base",
+      "reason": "Answer A is more concise.",
+      "ft_was_a": false
+    },
+    {
+      "question": "What award did Driver: San Francisco win at E3 2010?",
+      "outcome": "finetuned",
+      "reason": "More precise wording",
+      "ft_was_a": true
+    },
+    {
+      "question": "How do I counter an enemy's attack in Batman: Arkham Asylum?",
+      "outcome": "base",
+      "reason": "Answer A is more concise and directly references the warning icon from the context.",
+      "ft_was_a": false
+    },
+    {
+      "question": "Is Phantasy Star Online 2 available on Xbox One in North America?",
+      "outcome": "finetuned",
+      "reason": "More concise.",
+      "ft_was_a": true
+    },
+    {
+      "question": "What are the main modes of gameplay in Four Swords Adventures?",
+      "outcome": "finetuned",
+      "reason": "Answer B is more concise and directly addresses the question without including information about Navi Trackers.",
+      "ft_was_a": false
+    }
+  ]
+}

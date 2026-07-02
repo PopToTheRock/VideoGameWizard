@@ -84,7 +84,10 @@ Legend: ✅ done · 🚧 in progress · ⬜ not started
   (GGUF quantization routed through Ollama — no llama.cpp/cmake build needed.)
 - ✅ **Model card** (`finetune/README.md`): config, loss curve, base-vs-fine-tuned comparison
   (`compare_models.py` → `comparison.md`) — fine-tune is measurably more concise + grounded,
-  with honest limitations documented. Deferred: generation-metric (RAGAS) delta.
+  with honest limitations documented. **Quantitative win-rate** (`judge_models.py`, neutral
+  `qwen2.5:7b` judge over the full 150-Q val split): fine-tune wins **57.8%** of decided
+  matchups (67–49–34 W/L/T; 95% CI [48.7%, 66.4%], *p* ≈ 0.11 — a real but
+  not-yet-significant edge, reported honestly). Deferred: generation-metric (RAGAS) delta.
 
 ## Feature enhancements (post-M4)
 *Goal: surface the system's depth in the UX and close the ML loop. Each touches all

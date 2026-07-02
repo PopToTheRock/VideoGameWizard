@@ -65,18 +65,44 @@ is generalizing, not memorizing.
 learned the target *distribution*; it doesn't show the fine-tune is *better* at the
 deployed RAG-reader task (and since the teacher authored the labels, low val loss
 partly reflects self-distillation). `judge_models.py` measures the real thing: it
-sends the identical grounded prompt from the held-out val split to both models and
-has a judge model pick the better answer on **grounding + conciseness**, then reports
-a win-rate. Deterministic (temp 0, fixed seed) with A/B order alternated to cancel
-position bias; use a judge model distinct from both contestants for a fair read.
+sends the identical grounded prompt from each held-out val question to both models
+and has a **neutral judge** pick the better answer on **grounding + conciseness**.
+Deterministic (temp 0, fixed seed 42), A/B order alternated per item to cancel
+position bias, and the judge (`qwen2.5:7b`) is a *different model family* from both
+contestants, so neither is grading its own output.
+
+Over the **full 150-question held-out val split**:
+
+| outcome | count |
+|---------|------:|
+| **Fine-tuned wins** (`vgw-rag:8b`) | **67** |
+| Base wins (`llama3.1:8b`) | 49 |
+| Tie | 34 |
+
+- **Decided win-rate: 57.8%** (67 of 116 non-tie matchups) — 95% Wilson CI **[48.7%, 66.4%]**
+- Overall win-rate: 44.7% (ties counted as non-wins) — 95% Wilson CI [36.9%, 52.7%]
+- Tie rate: 22.7%
+
+**Read honestly.** When the judge expressed a preference, the fine-tune won **57.8%** of
+head-to-head matchups (+18 net wins over 116 decided games) — a real edge in the intended
+direction. But at this sample size it is **not yet statistically significant**: the Wilson
+interval just crosses 50% and a two-sided binomial test gives *p* ≈ 0.11. The defensible
+claim is therefore *"the fine-tune is at least as good as the 8B base and trends better on
+grounding + conciseness,"* **not** *"decisively better."* The 22.7% tie rate is expected —
+on easy single-fact questions the two models converge on the same short answer.
+
+The judge's rationales match the qualitative picture below: fine-tuned wins are cited as
+*"more concise, directly matches the reference,"* while base wins cluster on **enumeration**
+questions (e.g. *"includes all courses mentioned in the context"*) — the exact
+over-compression failure mode noted under [Honest limitations](#honest-limitations). All
+150 verdicts parsed cleanly (0 malformed judge outputs).
 
 ```bash
-# from scraping/ — needs Ollama + both models registered
-py -m finetune.judge_models --finetuned vgw-rag:8b --n 50 --judge llama3.1:70b
+# reproduce — from scraping/, needs Ollama + all three models pulled
+py -m finetune.judge_models --finetuned vgw-rag:8b --judge qwen2.5:7b --n 150
 ```
 
-This writes `judge_results.md` / `.json` (win-rate table). *Run it and paste the
-win-rate here* — that is the headline number for this milestone.
+Per-question verdicts + reasons: `judge_results.json`; summary table: `judge_results.md`.
 
 **Proxy metric.** Held-out **val loss 0.161** (the fine-tune fits the grounded-answer
 target the base model does not produce by default).
@@ -143,8 +169,9 @@ runs the training pipeline.)
 | `prepare_data.py` | Build the instruction dataset (grounded, eval-disjoint) |
 | `train_qlora.py` | QLoRA training (Unsloth + TRL), loss curve + summary |
 | `export_merged.py` | Merge adapter → 16-bit HF checkpoint |
-| `compare_models.py` | Base vs. fine-tuned on held-out questions |
+| `compare_models.py` | Base vs. fine-tuned on held-out questions (qualitative) |
+| `judge_models.py` | Neutral-judge win-rate, base vs. fine-tuned (quantitative) |
 | `Modelfile` | Ollama recipe (inherits the base Llama-3.1 template) |
 | `data/*.jsonl` | Committed train/val sets |
-| `loss_curve.png`, `training_summary.json`, `comparison.md` | Committed results |
+| `loss_curve.png`, `training_summary.json`, `comparison.md`, `judge_results.{md,json}` | Committed results |
 | `outputs/` | Adapter, merged model (gitignored — large) |
