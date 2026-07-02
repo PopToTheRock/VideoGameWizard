@@ -1,10 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-    Allows cleartext HTTP for local development.
-    The RAG server runs on the developer's PC over the local network
-    without TLS — this config permits that while keeping all external
-    traffic encrypted.
+    Cleartext HTTP is blocked by default. Local development talks plain HTTP
+    to the RAG server on the developer's PC, so the DEBUG source set overrides
+    this file with a permissive config (src/debug/res/xml/). Release builds
+    keep cleartext off; a production deployment would front the server with
+    TLS (the release BASE_URL is a documented placeholder today).
 -->
 <network-security-config>
-    <base-config cleartextTrafficPermitted="true" />
+    <base-config cleartextTrafficPermitted="false" />
 </network-security-config>
