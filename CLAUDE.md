@@ -383,8 +383,10 @@ These were identified in a full code review. See `ROADMAP.md` for the broader po
 
 ---
 
-## Must Have Goals
+## Engineering Bar
 
-- Engineering at the level of the best Google engineers in the world
-- Ensuring best practices of all relevant programming languages, frameworks and third party software for this app
-- Always evaluate any decisions made against what a top level Google engineer would do
+- Follow the established best practices of each stack in this repo (Kotlin/Compose,
+  FastAPI/pydantic, PyTorch/TRL) rather than inventing local conventions.
+- Prefer boring, well-tested solutions; when deviating, say why in a comment or commit message.
+- Treat warnings, lint findings, and flaky tests as defects, not noise.
+- Claims in docs must match measured reality — report honest numbers, including regressions.

@@ -46,6 +46,8 @@ Legend: ✅ done · 🚧 in progress · ⬜ not started
   (Python) — all wired into CI. detekt deferred (1.23.x lags on Kotlin 2.3).
 - ⬜ **AGP 9.0 cleanup** (deferred): migrate to built-in Kotlin (`android.builtInKotlin`,
   drop the `kotlin.android` plugin) to clear deprecation warnings — non-urgent (removed in AGP 10)
+- ⬜ **Room kapt → KSP** (deferred): kapt is in maintenance mode; KSP is the supported,
+  faster annotation-processing path for Room 2.8+
 - ✅ **`requirements.txt`** (full runtime) + **`requirements-test.txt`** (lightweight CI deps)
 
 ## Milestone 3 — Backend hardening
