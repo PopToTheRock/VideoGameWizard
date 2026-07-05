@@ -116,6 +116,7 @@ class HomeViewModel(
                             sources = event.sources
                             transient.update { it.copy(streamingSources = event.sources) }
                         }
+
                         is ChatStreamEvent.Token -> {
                             partial.append(event.text)
                             // First token: swap the typing indicator for the
@@ -220,8 +221,10 @@ class HomeViewModel(
     private fun errorMessage(exception: Throwable): String = when (exception) {
         is SocketTimeoutException ->
             "Request timed out. The server may be busy — try again."
+
         is ConnectException, is IOException ->
             "Couldn't reach the server. Make sure it's running on your PC."
+
         else ->
             "Something went wrong. Please try again."
     }

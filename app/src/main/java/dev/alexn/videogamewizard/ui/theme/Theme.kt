@@ -46,6 +46,7 @@ fun VideoGameWizardTheme(
         }
 
         darkTheme -> DarkColorScheme
+
         else -> LightColorScheme
     }
 
