@@ -13,7 +13,7 @@
 # edit the floors here, re-run pip-compile, commit both files.
 
 # --- RAG server ---
-fastapi>=0.115
+fastapi>=0.139.0
 uvicorn[standard]>=0.30
 pydantic>=2.9
 pydantic-settings>=2.4
