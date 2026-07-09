@@ -9,5 +9,5 @@
 
 # --- Scraping pipeline (only needed to (re)build the dataset, not to serve) ---
 requests>=2.32
-scrapy>=2.11
+scrapy>=2.17.0
 beautifulsoup4>=4.15.0
