@@ -16,7 +16,7 @@
 fastapi>=0.139.0
 uvicorn[standard]>=0.30
 pydantic>=2.13.4
-pydantic-settings>=2.4
+pydantic-settings>=2.14.2
 httpx>=0.27
 
 # --- Embeddings + vector store (imported lazily at server startup) ---
