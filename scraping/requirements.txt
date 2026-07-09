@@ -8,6 +8,6 @@
 -r requirements-server.txt
 
 # --- Scraping pipeline (only needed to (re)build the dataset, not to serve) ---
-requests>=2.32
+requests>=2.34.2
 scrapy>=2.11
 beautifulsoup4>=4.15.0
